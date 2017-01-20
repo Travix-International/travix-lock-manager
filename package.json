@@ -1,0 +1,54 @@
+{
+  "name": "travix-lock-manager",
+  "description": "Travix Lock Manager",
+  "version": "0.1.0",
+  "license": "MIT",
+  "main": "index.js",
+  "homepage": "https://github.com/Travix-International/travix-lock-manager#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Travix-International/travix-lock-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Travix-International/travix-lock-manager/issues"
+  },
+  "author": {
+    "name": "Travix International",
+    "url": "http://travix.com"
+  },
+  "contributors": [
+    {
+      "name": "Den Vlassenko",
+      "url": "https://github.com/vladen"
+    }
+  ],
+  "scripts": {
+    "dist": "rimraf lib && babel src --out-dir lib",
+    "exam": "mocha --bail",
+    "lint": "eslint src/*.js test/*.spec.js",
+    "spec": "mocha --reporter markdown > SPEC.md",
+    "test": "nyc --reporter=lcov --require babel-register mocha && nyc report",
+    "trav": "codeclimate-test-reporter < coverage/lcov.info"
+  },
+  "devDependencies": {
+    "babel-cli": "^6",
+    "babel-core": "^6",
+    "babel-eslint": "^7",
+    "babel-plugin-transform-async-to-generator": "^6",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6",
+    "babel-register": "^6",
+    "chai": "^3",
+    "chai-as-promised": "^6",
+    "codeclimate-test-reporter": "^0",
+    "eslint": "^3",
+    "mocha": "^3",
+    "nyc": "^10",
+    "proxyquire": "^1",
+    "rimraf": "^2",
+    "sinon": "^1",
+    "sinon-chai": "^2"
+  },
+  "engines": {
+    "node": ">=6.9"
+  }
+}
