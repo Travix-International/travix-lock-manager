@@ -1,4 +1,4 @@
-/* global Map, WeakMap */
+/* global Map, Set, WeakMap */
 
 'use strict';
 
@@ -300,12 +300,19 @@ class LockMap {
     throw new Error('Some of requested locks cannot be acquired');
   }
 
-  /*
-  export(key) {
+  lookup(key, predicate) {
+    if (isFunction(key)) {
+      predicate = key;
+      key = null;
+    }
+    else if (predicate != null) {
+      validate('predicate', 'a function', predicate, isFunction);
+    }
     const { config: { delimiter }, lists } = this;
-    if (key == null) return this.locks;
     const keys = [];
-    if (isArray(key)) {
+    if (key == null) {
+      keys.push(...this.lists.keys());
+    } else if (isArray(key)) {
       const { length } = key;
       for (let i = -1; ++i < length;) {
         keys.push(validateKey(delimiter, key[i], `keys[${i}]`));
@@ -316,16 +323,13 @@ class LockMap {
     const set = new Set;
     for (key of keys) {
       let list = lists.get(key);
-      while (list) {
-        for (const lock of list.locks) {
-          set.add(lock);
-        }
-        list = list.parent;
+      if (!list) continue;
+      for (const lock of list.locks) {
+        if (!predicate || predicate(lock)) set.add(lock);
       }
     }
-    return Array.from(set);
+    return set;
   }
-  */
 
   async release(key, mode, owner) {
     const { config: { delimiter, releasing }, lists } = this;
@@ -413,11 +417,9 @@ class LockManager {
     return (short ? CODES : TYPES)[mode];
   }
 
-  /*
-  export(key = null) {
-    return bags.get(this).export(key);
+  lookup(key, predicate) {
+    return bags.get(this).lookup(key, predicate);
   }
-  */
 
   async release(key, mode = EX, owner) {
     return await bags.get(this).release(key, mode, owner);
@@ -434,6 +436,5 @@ for (const mode of MODES) {
 }
 
 defineProperties(LockManager, properties);
-defineProperties(LockManager.prototype, properties);
 
 export default LockManager;
