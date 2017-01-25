@@ -1,32 +1,29 @@
-/* global Promise, Set */
-/* eslint no-unused-expressions: 0 */
-/* eslint import/no-extraneous-dependencies: 0 */
+'use strict';
 
-import chai from 'chai';
-import sinon from 'sinon';
-import sinonChai from 'sinon-chai';
+// process.on('unhandledRejection', reason => console.log(`Rejection: ${reason.stack}`));
 
-import LockManagerClass from '../src/LockManager.js';
-
-chai.use(sinonChai);
-
-const { expect } = chai;
-const { match, spy } = sinon;
-
-const LockManager = LockManagerClass; // for better readability of specs
-const { CR, CW, EX, NL, PR, PW } = LockManager;
-const { CODES, MODES, TYPES } = LockManager;
-
+const delimiter = '/';
+const timeout = 5;
 const ERROR = 'Test';
 
-const delay = duration => new Promise(
-  resolve => setTimeout(resolve, duration)
-);
+let comparer, manager, onacquire, onerror, onrelease;
 
-class TestError extends Error {
+class AcquireError extends Error {
   constructor() {
     super(ERROR);
   }
+}
+
+function delay(duration) {
+  return new Promise(resolve => setTimeout(resolve, duration));
+}
+
+function failableSpy() {
+  const result = spy(() => {
+    if (result.fail) throw new Error(ERROR);
+  });
+  result.fail = false;
+  return result;
 }
 
 describe('LockManager', () => {
@@ -49,27 +46,14 @@ describe('new LockManager(config)', () => {
 });
 
 describe('new LockManager(config:object)', () => {
-  let acquired;
-  const delimiter = '/';
-  let comparer;
-  let manager;
-  let releasing;
-  const timeout = 25;
-
-  function failableSpy() {
-    const result = spy(() => {
-      if (result.fail) throw new Error(ERROR);
-    });
-    result.fail = false;
-    return result;
-  }
-
   beforeEach(() => {
-    acquired = failableSpy();
-    comparer = spy((left, right) => left === right);
-    releasing = failableSpy();
+    comparer = spy((owner1, owner2) => owner1 === owner2);
+    onacquire = failableSpy();
+    onerror = spy();
+    onrelease = failableSpy();
+
     manager = new LockManager({
-      acquired, comparer, delimiter, Error: TestError, releasing, timeout
+      AcquireError, comparer, delimiter, onacquire, onerror, onrelease, timeout
     });
   });
 
@@ -77,46 +61,17 @@ describe('new LockManager(config:object)', () => {
     expect(new LockManager({})).to.be.instanceOf(LockManager)
   );
 
-  it('throws if config.acquired is not a function', () => {
-    const operation = () => new LockManager({ acquired: 'test' });
+  it('throws if config.AcquireError is not a function', () => {
+    const operation = () => new LockManager({ AcquireError: null });
     expect(operation).to.throw(TypeError);
   });
 
-  it('calls config.acquired with array containing acquired lock', async () => {
-    const locks = await manager.acquire('key', EX, 'owner');
-    expect(acquired).to.have.been.calledWith(locks);
-  });
-
-  it('does not call config.acquired when lock was not acquired', async () => {
-    await manager.acquire('key', EX, 'owner');
+  it('rejects with instance of config.AcquireError when fails to acquire lock', async () => {
+    await manager.acquire('key', EX, 'owner1');
     try {
-      await manager.acquire('key', PW, 'owner');
-    } catch (error) {
-      expect(acquired).to.have.been.calledOnce;
-    }
-  });
-
-  it('calls config.acquired with array containing existing lock when it is reacquired', async () => {
-    await manager.acquire('key', EX, 'owner');
-    const locks = await manager.acquire('key', EX, 'owner');
-    expect(acquired).to.have.been.calledWith(locks);
-  });
-
-  it('rejects with error thrown by config.acquired when acquiring lock', async () => {
-    acquired.fail = true;
-    try {
-      expect(await manager.acquire('key', EX)).to.not.be.ok;
+      expect(await manager.acquire('key', EX, 'owner2')).to.not.be.ok;
     } catch (error) {
       expect(error.message).to.equal(ERROR);
-    }
-  });
-
-  it('cancels acquire operation if config.acquired throws', async () => {
-    acquired.fail = true;
-    try {
-      expect(await manager.acquire('key', EX)).to.not.be.ok;
-    } catch (error) {
-      expect(manager.locks).to.be.empty;
     }
   });
 
@@ -143,41 +98,70 @@ describe('new LockManager(config:object)', () => {
     expect(operation).to.throw(TypeError);
   });
 
-  it('throws if config.Error is not a function', () => {
-    const operation = () => new LockManager({ Error: null });
+  it('throws if config.onacquire is not a function', () => {
+    const operation = () => new LockManager({ onacquire: 'test' });
     expect(operation).to.throw(TypeError);
   });
 
-  it('rejects with instance of config.Error when fails to acquire lock', async () => {
-    await manager.acquire('key', EX, 'owner1');
+  it('calls config.onacquire with array containing onacquire lock', async () => {
+    const locks = await manager.acquire('key', EX, 'owner');
+    expect(onacquire).to.have.been.calledWith(locks);
+  });
+
+  it('does not call config.onacquire when lock was not onacquire', async () => {
+    await manager.acquire('key', EX, 'owner');
     try {
-      expect(await manager.acquire('key', EX, 'owner2')).to.not.be.ok;
+      await manager.acquire('key', PW, 'owner');
+    } catch (error) {
+      expect(onacquire).to.have.been.calledOnce;
+    }
+  });
+
+  it('calls config.onacquire with array containing existing lock when it is reacquired', async () => {
+    await manager.acquire('key', EX, 'owner');
+    const locks = await manager.acquire('key', EX, 'owner');
+    expect(onacquire).to.have.been.calledWith(locks);
+  });
+
+  it('rejects with error thrown by config.onacquire when acquiring lock', async () => {
+    onacquire.fail = true;
+    try {
+      expect(await manager.acquire('key', EX)).to.not.be.ok;
     } catch (error) {
       expect(error.message).to.equal(ERROR);
     }
   });
 
-  it('throws if config.releasing is not a function', () => {
-    const operation = () => new LockManager({ releasing: 'test' });
-    expect(operation).to.throw(TypeError);
-  });
-
-  it('calls config.releasing when expired lock is being released', async () => {
-    const [lock] = await manager.acquire('key', PW, 'owner');
-    await delay(timeout);
-    expect(releasing).to.have.been.calledWith(match([match(lock)]));
-  });
-
-  it('does not call config.releasing when lock was not released', async () => {
+  it('cancels acquire operation if config.onacquire throws', async () => {
+    onacquire.fail = true;
     try {
-      await manager.release('key', PW, 'owner');
+      expect(await manager.acquire('key', EX)).to.not.be.ok;
     } catch (error) {
-      expect(acquired).to.not.have.been.called;
+      expect(manager.locks).to.be.empty;
     }
   });
 
-  it('rejects with error thrown by config.releasing when releasing lock', async () => {
-    releasing.fail = true;
+  it('throws if config.onrelease is not a function', () => {
+    const operation = () => new LockManager({ onrelease: 'test' });
+    expect(operation).to.throw(TypeError);
+  });
+
+  it('calls config.onrelease when expired lock is being released', async () => {
+    const [lock] = await manager.acquire('key', PW, 'owner');
+    await delay(timeout);
+    expect(onrelease).to.have.been.calledWith(match([match(lock)]));
+  });
+
+  it('does not call config.onrelease when lock was not released', async () => {
+    try {
+      await manager.release('key', PW, 'owner');
+    } catch (error) {
+      expect(onrelease).to.not.have.been.called;
+    }
+  });
+
+  it('rejects with error thrown by config.onrelease when releasing lock', async () => {
+    onrelease.fail = true;
     await manager.acquire('key');
     try {
       expect(await manager.release('key')).to.not.be.ok;
@@ -186,8 +170,8 @@ describe('new LockManager(config:object)', () => {
     }
   });
 
-  it('cancels release operation if config.releasing throws', async () => {
-    releasing.fail = true;
+  it('cancels release operation if config.onrelease throws', async () => {
+    onrelease.fail = true;
     const [lock] = await manager.acquire('key');
     try {
       expect(await manager.release('key')).to.not.be.ok;
@@ -288,7 +272,7 @@ describe('new LockManager(config:object)', () => {
         ]);
     });
 
-    it('captures CR lock on parent key when acuired lock mode is CR', async () => {
+    it('captures CR lock on parent key when acquired lock mode is CR', async () => {
       await manager.acquire('parent/child', CR);
       expect(manager.locks).to.deep.include.members([
         { key: 'parent', mode: CR, owner: undefined }
@@ -622,80 +606,6 @@ describe('new LockManager(config:object)', () => {
     });
   });
 
-  describe('.lookup', () => {
-    it('is a function', () =>
-      expect(manager.lookup).to.be.a('function')
-    );
-  });
-
-  describe('.lookup()', () => {
-    it('returns empty set if nothing is locked', () =>
-      expect(manager.lookup()).to.be.instanceof(Set)
-        .and.have.property('size').which.equal(0)
-    );
-
-    it('returns set containing locks hierarchy', async () => {
-      await manager.acquire('ancestor/parent/child', EX, 'owner');
-      expect(Array.from(manager.lookup())).to.deep.include.members([
-          { key: 'ancestor', mode: CW, owner: 'owner' },
-          { key: 'ancestor/parent', mode: CW, owner: 'owner' },
-          { key: 'ancestor/parent/child', mode: EX, owner: 'owner' }
-        ]);
-    });
-  });
-
-  describe('.lookup(key)', () => {
-    it('throws if key is not string or array of strings', () =>
-      expect(() => manager.lookup(42)).to.throw
-    );
-  });
-
-  describe('.lookup(key:string)', () => {
-    it('returns empty set if specified key was not locked', async () => {
-      await manager.acquire('a');
-      expect(manager.lookup('b')).to.be.instanceof(Set)
-        .and.have.property('size').which.equal(0);
-    });
-
-    it('returns set containing lock data for specified key and its ancestors only if it was locked', async () => {
-      await manager.acquire(['key1', 'key2'], PW, 'owner');
-      () => expect(Array.from(manager.lookup('key1'))).to.not.deep.include.members([
-        { key: 'key2', mode: PW, owner: 'owner' },
-        { key: '', mode: CW, owner: 'owner' }
-      ]);
-    });
-  });
-
-  describe('.lookup(key:string[])', () => {
-    it('returns set containing locks for specified keys only', async () => {
-      await manager.acquire(['a', 'b', 'c']);
-      expect(Array.from(manager.lookup(['a', 'b']))).to.deep.include.members([
-        { key: 'a', mode: EX, owner: undefined },
-        { key: 'b', mode: EX, owner: undefined }
-      ]).and.not.deep.include.members([
-        { key: 'c', mode: EX, owner: undefined }
-      ]);
-    });
-  });
-
-  describe('.lookup(predicate:function)', () => {
-    it('returns set containing only locks satisfying predicate', async () => {
-      await manager.acquire(['a', 'b', 'c']);
-      expect(Array.from(manager.lookup(lock => lock.key === 'a'))).to.deep.include.members([
-        { key: 'a', mode: EX, owner: undefined }
-      ]).and.not.deep.include.members([
-        { key: 'b', mode: EX, owner: undefined },
-        { key: 'c', mode: EX, owner: undefined }
-      ]);
-    });
-  });
-
-  describe('.lookup(key:string, predicate)', () => {
-    it('throws if predicate is not a function', () =>
-      expect(() => manager.lookup('', 42)).to.throw
-    );
-  });
-
   describe('.release(key)', async () => {
     it('throws if key is not a string or array of strings or object or array of objects', async () => {
       try {
@@ -732,48 +642,78 @@ describe('new LockManager(config:object)', () => {
     });
   });
 
-  describe('Lock', () => {
-    describe('.code', () => {
-      it('returns short (two-letter) description of the lock mode', async () => {
-        for (let i = MODES.length; --i >= 0;) {
-          const code = CODES[i];
-          const mode = MODES[i];
-          const [lock] = await manager.acquire(code, mode);
-          expect(lock.code).to.be.a('string')
-            .and.equal(code);
-        }
-      });
+  describe('.select', () => {
+    it('is a function', () =>
+      expect(manager.select).to.be.a('function')
+    );
+  });
+
+  describe('.select()', () => {
+    it('returns empty set if nothing is locked', () =>
+      expect(manager.select())
+        .to.be.instanceof(Set)
+        .and.have.property('size').which.equal(0)
+    );
+
+    it('returns set containing locks hierarchy', async () => {
+      await manager.acquire('ancestor/parent/child', EX, 'owner');
+      expect(Array.from(manager.select()))
+        .to.deep.include.members([
+          { key: 'ancestor', mode: CW, owner: 'owner' },
+          { key: 'ancestor/parent', mode: CW, owner: 'owner' },
+          { key: 'ancestor/parent/child', mode: EX, owner: 'owner' }
+        ]);
     });
+  });
 
-    describe('.type', () => {
-      it('returns long description of the lock mode', async () => {
-        for (let i = MODES.length; --i >= 0;) {
-          const mode = MODES[i];
-          const type = TYPES[i];
-          const [lock] = await manager.acquire(type, mode);
-          expect(lock.type).to.be.a('string')
-            .and.equal(type);
-        }
-      });
+  describe('.select(key)', () => {
+    it('throws if key is not string or array of strings', () =>
+      expect(() => manager.select(42))
+        .to.throw
+    );
+  });
+
+  describe('.select(key:string)', () => {
+    it('returns empty set if specified key was not locked', async () => {
+      await manager.acquire('a');
+      expect(manager.select('b'))
+        .to.be.instanceof(Set)
+        .and.have.property('size')
+        .which.equal(0);
     });
+  });
 
-    describe('.toString()', () => {
-      it('returns string containing lock key and type if owner is not specified', async () => {
-        const key = 'key', mode = EX;
-        const [lock] = await manager.acquire('key', EX);
-        expect(lock.toString()).to.be.a('string')
-          .and.contain(key)
-          .and.contain(manager.describe(mode));
-      });
+  describe('.select(key:string[])', () => {
+    it('returns set containing locks for specified keys only', async () => {
+      await manager.acquire(['a', 'b', 'c']);
+      expect(Array.from(manager.select(['a', 'b'])).map(({ key }) => key))
+        .to.include('a')
+        .and.include('b');
+    });
+  });
 
-      it('returns string containing lock key, type and owner if owner is specified', async () => {
-        const key = 'key', mode = EX, owner = 'owner';
-        const [lock] = await manager.acquire('key', EX, 'owner');
-        expect(lock.toString()).to.be.a('string')
-          .and.contain(key)
-          .and.contain(manager.describe(mode))
-          .and.contain(owner);
-      });
+  describe('.select(predicate:function)', () => {
+    it('returns set containing only locks satisfying predicate', async () => {
+      await manager.acquire(['a', 'b']);
+      expect(Array.from(manager.select(({ key }) => key === 'a')).map(({ key }) => key))
+        .to.include('a')
+        .and.not.include('b');
+    });
+  });
+
+  describe('.select(key:string, predicate)', () => {
+    it('throws if predicate is not a function', () =>
+      expect(() => manager.select('', 42))
+        .to.throw
+    );
+  });
+
+  describe('.select(key:string, predicate:function)', () => {
+    it('returns set containing only locks satisfying predicate', async () => {
+      await manager.acquire('a', NL, 'owner1');
+      await manager.acquire('a', CR, 'owner2');
+      expect(Array.from(manager.select('a', ({ mode }) => mode === CR)).map(({ owner }) => owner))
+        .to.not.include('owner1');
     });
   });
 });

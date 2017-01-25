@@ -23,20 +23,17 @@
     }
   ],
   "scripts": {
-    "build": "rimraf lib && babel src --out-dir lib",
+    "check": "mocha --bail",
     "doc": "jsdoc2md src/*.doc.js > DOC.md --global-index-format dl --member-index-format grouped --module-index-format dl --param-list-format list --property-list-format list",
-    "exam": "mocha --bail",
     "lint": "eslint src/*.js test/*.spec.js",
     "spec": "mocha --reporter markdown > SPEC.md",
     "test": "nyc --reporter=lcov --require babel-register mocha && nyc report",
     "travis": "codeclimate-test-reporter < coverage/lcov.info"
   },
   "devDependencies": {
-    "babel-cli": "^6",
-    "babel-core": "^6",
+    "babel-core": "^6.22.1",
     "babel-eslint": "^7",
     "babel-plugin-transform-async-to-generator": "^6",
-    "babel-plugin-transform-es2015-modules-commonjs": "^6",
     "babel-register": "^6",
     "chai": "^3",
     "chai-as-promised": "^6",
@@ -46,7 +43,6 @@
     "mocha": "^3",
     "nyc": "^10",
     "proxyquire": "^1",
-    "rimraf": "^2",
     "sinon": "^1",
     "sinon-chai": "^2"
   },

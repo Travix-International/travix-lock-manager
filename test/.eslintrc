@@ -1,5 +1,24 @@
 {
   "env": {
     "mocha": true
+  },
+  "globals": {
+    "expect": false,
+    "match": false,
+    "spy": false,
+
+    "LockManager": false,
+    "CR": false,
+    "CW": false,
+    "EX": false,
+    "NL": false,
+    "PR": false,
+    "PW": false,
+    "CODES": false,
+    "MODES": false,
+    "TYPES": false
+  },
+  "rules": {
+    "no-unused-expressions": 0
   }
 }
