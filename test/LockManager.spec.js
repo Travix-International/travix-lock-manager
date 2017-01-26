@@ -3,27 +3,20 @@
 // process.on('unhandledRejection', reason => console.log(`Rejection: ${reason.stack}`));
 
 const delimiter = '/';
-const timeout = 5;
+const timeout = 10;
 const ERROR = 'Test';
 
-let comparer, manager, onacquire, onerror, onrelease;
+let comparer, manager, onacquire, onrelease;
 
 class AcquireError extends Error {
-  constructor() {
+  constructor(message, locks) {
     super(ERROR);
+    this.locks = locks;
   }
 }
 
-function delay(duration) {
+function delay(duration = timeout) {
   return new Promise(resolve => setTimeout(resolve, duration));
-}
-
-function failableSpy() {
-  const result = spy(() => {
-    if (result.fail) throw new Error(ERROR);
-  });
-  result.fail = false;
-  return result;
 }
 
 describe('LockManager', () => {
@@ -34,7 +27,7 @@ describe('LockManager', () => {
 
 describe('new LockManager', () => {
   it('returns instance of LockManager', () =>
-    expect(new LockManager).to.be.instanceOf(LockManager)
+    expect(new LockManager).to.be.instanceof(LockManager)
   );
 });
 
@@ -46,33 +39,49 @@ describe('new LockManager(config)', () => {
 });
 
 describe('new LockManager(config:object)', () => {
+  afterEach(() => {
+    onacquire.fail = false;
+    onrelease.fail = false;
+  });
+
   beforeEach(() => {
     comparer = spy((owner1, owner2) => owner1 === owner2);
-    onacquire = failableSpy();
-    onerror = spy();
-    onrelease = failableSpy();
+    onacquire = spy(() => {
+      if (onacquire.fail) throw new Error(ERROR);
+    });
+    onacquire.fail = false;
+    onrelease = spy(() => {
+      if (onrelease.fail) throw new Error(ERROR);
+      if (onrelease.delay) return delay();
+    });
+    onrelease.delay = false;
+    onrelease.fail = false;
 
     manager = new LockManager({
-      AcquireError, comparer, delimiter, onacquire, onerror, onrelease, timeout
+      AcquireError, comparer, delimiter, onacquire, onrelease, timeout
     });
   });
 
   it('returns instance of LockManager', () =>
-    expect(new LockManager({})).to.be.instanceOf(LockManager)
+    expect(new LockManager({})).to.be.instanceof(LockManager)
   );
 
   it('throws if config.AcquireError is not a function', () => {
-    const operation = () => new LockManager({ AcquireError: null });
+    const operation = () => new LockManager({ AcquireError: 42 });
     expect(operation).to.throw(TypeError);
   });
 
-  it('rejects with instance of config.AcquireError when fails to acquire lock', async () => {
+  it('rejects with instance of config.AcquireError when fails to acquire lock initialized with failed locks', async () => {
     await manager.acquire('key', EX, 'owner1');
+    let error;
     try {
-      expect(await manager.acquire('key', EX, 'owner2')).to.not.be.ok;
-    } catch (error) {
-      expect(error.message).to.equal(ERROR);
+      await manager.acquire('key', EX, 'owner2');
+    } catch (e) {
+      error = e;
     }
+    expect(error).to.be.instanceof(AcquireError).and.property('locks').deep.include.members([
+      { key: 'key', mode: EX, owner: 'owner2' }
+    ]);
   });
 
   it('throws if config.comparer is not a function', () => {
@@ -98,6 +107,18 @@ describe('new LockManager(config:object)', () => {
     expect(operation).to.throw(TypeError);
   });
 
+  it('removes leading and trailing config.delimiter from the key', async () => {
+    const [lock] = await manager.acquire(delimiter + 'key' + delimiter + delimiter);
+    expect(lock).to.have.property('key').which.equal('key');
+  });
+
+  it('accepts empty delimiter', async () => {
+    manager = new LockManager({ delimiter: '' });
+    const key = 'solid / key';
+    const [lock] = await manager.acquire(key);
+    expect(lock).to.have.property('key').which.equal(key);
+  });
+
   it('throws if config.onacquire is not a function', () => {
     const operation = () => new LockManager({ onacquire: 'test' });
     expect(operation).to.throw(TypeError);
@@ -108,13 +129,14 @@ describe('new LockManager(config:object)', () => {
     expect(onacquire).to.have.been.calledWith(locks);
   });
 
-  it('does not call config.onacquire when lock was not onacquire', async () => {
+  it('does not call config.onacquire when lock has not been acquired', async () => {
     await manager.acquire('key', EX, 'owner');
     try {
       await manager.acquire('key', PW, 'owner');
-    } catch (error) {
-      expect(onacquire).to.have.been.calledOnce;
+    } catch (e) {
+      // continue
     }
+    expect(onacquire).to.have.been.calledOnce;
   });
 
   it('calls config.onacquire with array containing existing lock when it is reacquired', async () => {
@@ -125,20 +147,23 @@ describe('new LockManager(config:object)', () => {
 
   it('rejects with error thrown by config.onacquire when acquiring lock', async () => {
     onacquire.fail = true;
+    let error;
     try {
-      expect(await manager.acquire('key', EX)).to.not.be.ok;
-    } catch (error) {
-      expect(error.message).to.equal(ERROR);
+      await manager.acquire('key', EX);
+    } catch (e) {
+      error = e;
     }
+    expect(error.message).to.equal(ERROR);
   });
 
   it('cancels acquire operation if config.onacquire throws', async () => {
     onacquire.fail = true;
     try {
-      expect(await manager.acquire('key', EX)).to.not.be.ok;
-    } catch (error) {
-      expect(manager.locks).to.be.empty;
+      await manager.acquire('key', EX);
+    } catch (e) {
+      // continue
     }
+    expect(manager.locks).to.be.empty;
   });
 
   it('throws if config.onrelease is not a function', () => {
@@ -148,36 +173,55 @@ describe('new LockManager(config:object)', () => {
 
   it('calls config.onrelease when expired lock is being released', async () => {
     const [lock] = await manager.acquire('key', PW, 'owner');
-    await delay(timeout);
+    await delay();
     expect(onrelease).to.have.been.calledWith(match([match(lock)]));
   });
 
-  it('does not call config.onrelease when lock was not released', async () => {
+  it('does not call config.onrelease when lock has not been released', async () => {
     try {
       await manager.release('key', PW, 'owner');
-    } catch (error) {
-      expect(onrelease).to.not.have.been.called;
+    } catch (e) {
+      // continue
     }
+    expect(onrelease).to.not.have.been.called;
   });
 
   it('rejects with error thrown by config.onrelease when releasing lock', async () => {
     onrelease.fail = true;
     await manager.acquire('key');
+    let error;
     try {
-      expect(await manager.release('key')).to.not.be.ok;
-    } catch (error) {
-      expect(error.message).to.equal(ERROR);
+      await manager.release('key');
+    } catch (e) {
+      error = e;
     }
+    expect(error.message).to.equal(ERROR);
   });
 
   it('cancels release operation if config.onrelease throws', async () => {
     onrelease.fail = true;
     const [lock] = await manager.acquire('key');
     try {
-      expect(await manager.release('key')).to.not.be.ok;
-    } catch (error) {
-      expect(manager.locks).to.contain(lock);
+      await manager.release('key');
+    } catch (e) {
+      // continue
     }
+    expect(manager.locks).to.contain(lock);
+  });
+
+  it('extends expired lock if config.onrelease throws', async () => {
+    const suppress = () => {};
+    process.addListener('unhandledRejection', suppress);
+    onrelease.fail = true;
+    const [lock] = await manager.acquire('key');
+    await delay();
+    const extended = manager.locks;
+    onrelease.fail = false;
+    await delay();
+    const expired = manager.locks;
+    process.removeListener('unhandledRejection', suppress);
+    expect(extended).to.contain(lock);
+    expect(expired).to.not.contain(lock);
   });
 
   it('throws if config.timeout is not a number', () => {
@@ -192,58 +236,53 @@ describe('new LockManager(config:object)', () => {
 
   it('removes acquired lock after timeout', async () => {
     await manager.acquire('key', EX);
-    await delay(timeout);
+    await delay();
     expect(manager.locks).to.be.empty;
   });
 
   describe('.acquire()', () => {
     it('rejects if called without arguments', async () => {
+      let error;
       try {
-        expect(await manager.acquire()).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire();
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
   });
 
   describe('.acquire(key:string)', async () => {
     it('rejects if key is not a string or array of strings or object or array of objects', async () => {
+      let error;
       try {
-        expect(await manager.acquire(42)).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire(42);
+      } catch (e) {
+        error = e;
       }
-    });
-
-    it('removes leading and trailing config.delimiter from the key', async () => {
-      const [lock] = await manager.acquire(delimiter + 'key' + delimiter + delimiter);
-      expect(lock).to.have.property('key').which.equal('key');
+      expect(error).to.be.ok;
     });
   });
 
   describe('.acquire(key:string, mode)', () => {
-    it('rejects if mode is omitted', async () => {
-      try {
-        expect(await manager.acquire('')).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
-      }
-    });
-
     it('rejects if mode is not a number', async () => {
+      let error;
       try {
-        expect(await manager.acquire('', '')).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire('', '');
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
 
-    it('rejects if mode is not positive number', async () => {
+    it('rejects if mode is unknown', async () => {
+      let error;
       try {
-        expect(await manager.acquire('', -1)).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire('', -1);
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
   });
 
@@ -324,29 +363,35 @@ describe('new LockManager(config:object)', () => {
 
     it('rejects if acquired lock conflicts on same level', async () => {
       await manager.acquire('key', EX);
+      let error;
       try {
-        expect(await manager.acquire('key', PW)).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire('key', PW);
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
 
     it('rejects if acquired lock conflicts on parent level', async () => {
       await manager.acquire('parent', EX);
+      let error;
       try {
-        expect(await manager.acquire('parent/child', PW)).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire('parent/child', PW);
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
 
     it('rejects if acquired lock conflicts on ancestor level', async () => {
       await manager.acquire('ancestor', EX);
+      let error;
       try {
-        expect(await manager.acquire('ancestor/parent/child', PW)).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire('ancestor/parent/child', PW);
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
   });
 
@@ -372,29 +417,35 @@ describe('new LockManager(config:object)', () => {
 
     it('rejects if acquired lock conflicts on same level', async () => {
       await manager.acquire('key', EX, 'owner1');
+      let error;
       try {
-        expect(await manager.acquire('key', EX, 'owner2')).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire('key', EX, 'owner2');
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
 
     it('rejects if acquired lock conflicts on parent level', async () => {
       await manager.acquire('parent', EX, 'owner1');
+      let error;
       try {
-        expect(await manager.acquire('parent/child', EX, 'owner2')).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire('parent/child', EX, 'owner2');
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
 
     it('rejects if acquired lock conflicts on ancestor level', async () => {
       await manager.acquire('ancestor', EX, 'owner1');
+      let error;
       try {
-        expect(await manager.acquire('ancestor/parent/child', EX, 'owner2')).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire('ancestor/parent/child', EX, 'owner2');
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
   });
 
@@ -414,28 +465,33 @@ describe('new LockManager(config:object)', () => {
     it('cancels operation if at least one lock being acquired conflicts with existing', async () => {
       await manager.acquire('key1', EX, 'owner1');
       try {
-        expect(await manager.acquire(['key1', 'key2'], EX, 'owner2')).to.be.not.ok;
-      } catch (error) {
-        expect(manager.locks).to.have.length(2);
+        await manager.acquire(['key1', 'key2'], EX, 'owner2');
+      } catch (e) {
+        // continue
       }
+      expect(manager.locks).to.have.length(2);
     });
   });
 
   describe('.acquire(lock:object)', () => {
     it('rejects if lock.key is not string', async () => {
+      let error;
       try {
-        expect(await manager.acquire({ key: 42 })).to.be.not.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire({ key: 42 });
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
 
     it('rejects if lock.mode is not known mode', async () => {
+      let error;
       try {
-        expect(await manager.acquire({ key: 'key', mode: 3 })).to.be.not.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire({ key: 'key', mode: 3 });
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
 
     it('resolves with array containing new lock for specified lock.key, lock.mode and lock.owner', async () => {
@@ -450,19 +506,23 @@ describe('new LockManager(config:object)', () => {
 
   describe('.acquire(locks:object[])', () => {
     it('rejects if locks[].key is not string', async () => {
+      let error;
       try {
-        expect(await manager.acquire([{ key: 42 }])).to.be.not.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire([{ key: 42 }]);
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
 
     it('rejects if locks[].mode is not known mode', async () => {
+      let error;
       try {
-        expect(await manager.acquire([{ key: 'key', mode: 3 }])).to.be.not.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.acquire([{ key: 'key', mode: 3 }]);
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
 
     it('resolves with array containing new locks for specified locks[].key, locks[].mode and locks[].owner', async () => {
@@ -591,56 +651,62 @@ describe('new LockManager(config:object)', () => {
     });
   });
 
+  describe('.release()', () => {
+    it('releases all keys', async () => {
+      await manager.acquire(['a', 'b']);
+      await manager.release();
+      expect(manager.locks).to.be.empty;
+    });
+
+    it('does not release lock twice if it is already pending for callback', async () => {
+      const key = 'key';
+      await manager.acquire(key);
+      const promise = manager.release(key);
+      expect(manager.release(key)).to.be.empty;
+      expect(await promise).to.not.be.empty;
+    });
+  });
+
+  /*
   describe('.locks', () => {
     it('is empty array initially', () =>
       expect(manager.locks).to.be.an('array').and.be.empty);
   });
 
-  describe('.release()', () => {
-    it('throws if called without arguments', async () => {
-      try {
-        expect(await manager.release()).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
-      }
-    });
-  });
-
   describe('.release(key)', async () => {
     it('throws if key is not a string or array of strings or object or array of objects', async () => {
+      let error;
       try {
-        expect(await manager.release(42)).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.release(42);
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
   });
 
   describe('.release(key:string, mode)', () => {
-    it('throws if mode is omitted', async () => {
-      try {
-        expect(await manager.release('')).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
-      }
-    });
-
     it('throws if mode is not a number', async () => {
+      let error;
       try {
-        expect(await manager.release('', '')).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.release('', '');
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
 
-    it('throws if mode is not positive number', async () => {
+    it('throws if mode is not known mode', async () => {
+      let error;
       try {
-        expect(await manager.release('', -1)).to.not.be.ok;
-      } catch (error) {
-        expect(error).to.be.ok;
+        await manager.release('', -1);
+      } catch (e) {
+        error = e;
       }
+      expect(error).to.be.ok;
     });
   });
+  */
 
   describe('.select', () => {
     it('is a function', () =>

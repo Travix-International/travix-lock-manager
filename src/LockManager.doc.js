@@ -11,7 +11,6 @@ class LockManager {
    * @param {String} [config.delimiter = '/'] - String delimiter used to split hierarchical keys.
    * @param {String} [config.AcquisitionError = Error] - Error class to use when throwing error that some of requested locks cannot be acquired.
    * @param {Function} [config.onacquire] - The `acquired` event handler. A function called each time when new locks are acquired or existing locks are prolonged with one parameter: array of lock objects. If this function throws or returns a promise which eventually rejects, all the locks that are being acquired will be removed (rollback semantics).
-   * @param {Function} [config.onerror] - The `error` event handler. A function called each time when an error occurs with one parameter: error object. If this handler is not specified, all error that are catched in the lock manager instance will be re-thrown.
    * @param {Function} [config.onrelease] - The `releasing` event handler. A function called each time when existing locks are released with one parameter: array of lock objects. If this function throws or returns a promise which eventually rejects, all the locks that are being released will be kept (rollback semantics).
    * @param {Number} [config.timeout = 0] - Expiration period of a lock, in milliseconds.
    *

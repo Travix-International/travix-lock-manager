@@ -1,11 +1,11 @@
 'use strict';
 
 const { CODES, EX, MODES, TYPES } = require('./constants');
-const { isFunction, isNonNegativeInteger, isObject, isString, validate } = require('./utilites');
+const { isFunction, isInteger, isObject, isString, validate } = require('./utilites');
 const LockMap = require('./LockMap');
 
 const { defineProperties, defineProperty, freeze } = Object;
-
+const enumerable = true;
 const maps = new WeakMap;
 
 const DefaultError = Error;
@@ -20,7 +20,6 @@ class LockManager {
       comparer = defaultComparer,
       delimiter = '/',
       onacquire = defaultCallback,
-      onerror = defaultCallback,
       onrelease = defaultCallback,
       timeout = 0
     } = config;
@@ -28,13 +27,12 @@ class LockManager {
     validate('config.comparer', 'a function', comparer, isFunction);
     validate('config.delimiter', 'a string', delimiter, isString);
     validate('config.onacquire', 'a function', onacquire, isFunction);
-    validate('config.onerror', 'a function', onerror, isFunction);
     validate('config.onrelease', 'a function', onrelease, isFunction);
-    validate('config.timeout', 'not negative integer', timeout, isNonNegativeInteger);
+    validate('config.timeout', 'not negative integer', timeout, isInteger(timeout) && timeout >= 0);
     config = freeze({
-      AcquireError, comparer, delimiter, onacquire, onerror, onrelease, timeout
+      AcquireError, comparer, delimiter, onacquire, onrelease, timeout
     });
-    defineProperty(this, 'config', { enumerable: true, value: config });
+    defineProperty(this, 'config', { enumerable, value: config });
     maps.set(this, new LockMap(config));
   }
 
@@ -64,12 +62,18 @@ class LockManager {
 }
 
 const properties = {
-  CODES: { enumerable: true, value: freeze(MODES.map(mode => CODES[mode])) },
-  MODES: { enumerable: true, value: freeze(MODES) },
-  TYPES: { enumerable: true, value: freeze(MODES.map(mode => TYPES[mode])) }
+  CODES: {
+    enumerable, value: freeze(MODES.map(mode => CODES[mode]))
+  },
+  MODES: {
+    enumerable, value: freeze(MODES)
+  },
+  TYPES: {
+    enumerable, value: freeze(MODES.map(mode => TYPES[mode]))
+  }
 };
 for (const mode of MODES) {
-  properties[CODES[mode]] = { enumerable: true, value: mode };
+  properties[CODES[mode]] = { enumerable, value: mode };
 }
 
 defineProperties(LockManager, properties);

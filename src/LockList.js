@@ -54,7 +54,7 @@ class LockList {
   }
 
   extend(lock) {
-    const { config: { onerror, onrelease, timeout } } = this;
+    const { config: { onrelease, timeout } } = this;
     pending.delete(lock);
     if (!timeout) return;
     clearTimeout(timers.get(lock));
@@ -65,8 +65,7 @@ class LockList {
           this.remove(lock);
         } catch (error) {
           this.extend(lock);
-          if (onerror) onerror(error);
-          else throw error;
+          throw error;
         }
       },
       timeout

@@ -28,7 +28,7 @@ class LockMap {
   }
 
   async acquire(key, mode, owner) {
-    const { config: { AcquireError, delimiter, onacquire, onerror }, lists } = this;
+    const { config: { AcquireError, delimiter, onacquire }, lists } = this;
     const failed = [];
     for (const locks of spawn(delimiter, key, mode, owner)) {
       const passed = [];
@@ -48,22 +48,15 @@ class LockMap {
           return passed;
         } catch (error) {
           for (const lock of passed) lists.get(lock.key).remove(lock);
-          if (onerror) onerror(error);
-          else throw error;
+          throw error;
         }
       }
     }
-    const error = new AcquireError(
-      'Some requested locks cannot be acquired: ' + failed
-        .map(lock => lock.toString())
-        .join('; ')
-    );
-    if (onerror) onerror(error);
-    else throw error;
+    throw new AcquireError('Some requested locks cannot be acquired', failed);
   }
 
   async release(key, mode, owner) {
-    const { config: { delimiter, onerror, onrelease }, lists } = this;
+    const { config: { delimiter, onrelease }, lists } = this;
     key = key == null
       ? Array.from(lists.keys())
       : key;
@@ -79,8 +72,7 @@ class LockMap {
       return passed;
     } catch (error) {
       for (const lock of passed) lists.get(lock.key).extend(lock);
-      if (onerror) onerror(error);
-      else throw error;
+      throw error;
     }
   }
 
