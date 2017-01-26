@@ -59,8 +59,8 @@ LockManager class. Helps to serialise access to a set of hierarchically organize
         * [.locks](#LockManager+locks) ⇒ <code>Array</code>
         * [.acquire(key, [mode], [owner])](#LockManager+acquire) ⇒ <code>Promise</code>
         * [.describe(mode, [short])](#LockManager+describe) ⇒ <code>String</code>
-        * [.export([key])](#LockManager+export) ⇒ <code>Set</code>
         * [.release(key, [mode], [owner])](#LockManager+release) ⇒ <code>Promise</code>
+        * [.select([key], [predicate])](#LockManager+select) ⇒ <code>Set</code>
     * _static_
         * [.CR](#LockManager.CR) ⇒ <code>Number</code>
         * [.CW](#LockManager.CW) ⇒ <code>Number</code>
@@ -80,23 +80,23 @@ Creates new instance of the LockManager class.
 **Params**
 
 - [config] <code>Object</code> <code> = {}</code> - A configuration object.
-    - [.acquired] <code>function</code> <code> = noop</code> - The `acquired` event handler. A function called each time when new locks are acquired or existing locks are prolonged with one parameter: array of lock objects. If this function throws or returns a promise which eventually rejects, all the locks that are being acquired will be removed (rollback semantics).
     - [.comparer] <code>String</code> <code> = (a, b) =&gt; a === b</code> - Comparison function used to determine eqality of any two owners. Should return truthy value if owners are equal; falsy value otherwise.
     - [.delimiter] <code>String</code> <code> = &#x27;/&#x27;</code> - String delimiter used to split hierarchical keys.
-    - [.Error] <code>String</code> <code> = Error</code> - Error class to use when throwing error that some of requested locks cannot be acquired.
-    - [.releasing] <code>function</code> <code> = noop</code> - The `released` event handler. A function called each time when existing locks are released with one parameter: array of lock objects. If this function throws or returns a promise which eventually rejects, all the locks that are being released will be kept (rollback semantics).
+    - [.AcquisitionError] <code>String</code> <code> = Error</code> - Error class to use when throwing error that some of requested locks cannot be acquired.
+    - [.onacquire] <code>function</code> - The `acquired` event handler. A function called each time when new locks are acquired or existing locks are prolonged with one parameter: array of lock objects. If this function throws or returns a promise which eventually rejects, all the locks that are being acquired will be removed (rollback semantics).
+    - [.onrelease] <code>function</code> - The `releasing` event handler. A function called each time when existing locks are released with one parameter: array of lock objects. If this function throws or returns a promise which eventually rejects, all the locks that are being released will be kept (rollback semantics).
     - [.timeout] <code>Number</code> <code> = 0</code> - Expiration period of a lock, in milliseconds.
 
 <a name="LockManager+keys"></a>
 
 ### lockManager.keys ⇒ <code>Array</code>
-Returns array of acquired keys.
+Returns array of unique keys of locks that are currently held.
 
 **Kind**: instance property of <code>[LockManager](#LockManager)</code>  
 <a name="LockManager+locks"></a>
 
 ### lockManager.locks ⇒ <code>Array</code>
-Returns array of acquired locks.
+Returns array of all locks that are currently held.
 
 **Kind**: instance property of <code>[LockManager](#LockManager)</code>  
 <a name="LockManager+acquire"></a>
@@ -124,17 +124,6 @@ Returns human readable string describing specified lock mode.
 - mode <code>Number</code> | <code>String</code> - Lock mode to describe.
 - [short] <code>boolean</code> <code> = false</code> - Type of description to return: short (2 letters) or long.
 
-<a name="LockManager+export"></a>
-
-### lockManager.export([key]) ⇒ <code>Set</code>
-Exports all existing locks or all the locks corresponding to specified keys.
-
-**Kind**: instance method of <code>[LockManager](#LockManager)</code>  
-**Returns**: <code>Set</code> - Set of selected locks.  
-**Params**
-
-- [key] <code>String</code> <code> = </code> - Key or array of keys to limit selection with. If omitted, all existing locks will be exported.
-
 <a name="LockManager+release"></a>
 
 ### lockManager.release(key, [mode], [owner]) ⇒ <code>Promise</code>
@@ -147,6 +136,18 @@ Asynchronously releases single or multiple locks. When multiple locks are being 
 - key <code>Array</code> | <code>String</code> | <code>Object</code> | <code>Null</code> - String key or lock object or array of string keys or array of lock objects to be release. The lock object may contain optional `key`, `mode` and `owner` properties with defaults to empty string for key and other arguments of this method for other properties. If null was passed, all the locks with the specified mode and belonging to the specified owner will be released.
 - [mode] <code>Number</code> <code> = EX</code> - Single lock mode or bitwise combination ( PW | CR) of lock modes to release. Use the correponsing constants exported by this module.
 - [owner] <code>Any</code> - Lock owner. Arbitrary value denoting a lock owner.
+
+<a name="LockManager+select"></a>
+
+### lockManager.select([key], [predicate]) ⇒ <code>Set</code>
+Selects and returns locks corresponding to specified keys and passing predicate check.
+
+**Kind**: instance method of <code>[LockManager](#LockManager)</code>  
+**Returns**: <code>Set</code> - Set of selected locks.  
+**Params**
+
+- [key] <code>Array</code> | <code>String</code> <code> = </code> - Key or array of keys to limit selection with. If omitted, all existing keys will be considered.
+- [predicate] <code>function</code> <code> = </code> - Function accepting lock argument and returning truthy value if this lock is to be selected.
 
 <a name="LockManager.CR"></a>
 
@@ -187,24 +188,21 @@ Returns bit flag for "Protected Write" lock mode.
 <a name="LockManager.CODES"></a>
 
 ### LockManager.CODES ⇒ <code>Array</code>
-Returns array containing short (two-letter) descriptions of all known lock modes
-sorted by mode exclusivity (from more restrictive to less):
+Returns array containing short (two-letter) descriptions of all known lock modes sorted exclusivity:
 ['EX', 'PW', 'PR', 'CW', 'CR', 'NL']
 
 **Kind**: static property of <code>[LockManager](#LockManager)</code>  
 <a name="LockManager.MODES"></a>
 
 ### LockManager.MODES ⇒ <code>Array</code>
-Returns array containing all known lock modes
-sorted by mode exclusivity (from more restrictive to less):
+Returns array containing all known lock modes sorted by exclusivity:
 [EX, PW, PR, CW, CR, NL]
 
 **Kind**: static property of <code>[LockManager](#LockManager)</code>  
 <a name="LockManager.TYPES"></a>
 
 ### LockManager.TYPES ⇒ <code>Array</code>
-Returns array containing short (two-letter) descriptions of all known lock modes
-sorted by mode exclusivity (from more restrictive to less):
+Returns array containing short (two-letter) descriptions of all known lock modes sorted exclusivity:
 ['Exclusive', 'Protected Write', 'Protected Read', 'Concurrent Write', 'Concurrent Read', 'Null']
 
 **Kind**: static property of <code>[LockManager](#LockManager)</code>  

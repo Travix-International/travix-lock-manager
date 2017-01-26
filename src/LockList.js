@@ -1,7 +1,7 @@
 'use strict';
 
-const { COMPATIBILITIES, ESCALATIONS } = require('./constants');
-const Lock = require('./Lock');
+import { COMPATIBILITIES, ESCALATIONS } from './constants';
+import Lock from './Lock';
 
 const captures = new WeakMap;
 const pending = new WeakSet;
@@ -98,4 +98,4 @@ class LockList {
   }
 }
 
-module.exports = LockList;
+export default LockList;

@@ -1,7 +1,7 @@
 'use strict';
 
-const { CODES, MODES } = require('./constants');
-const Lock = require('./Lock');
+import { CODES, MODES } from './constants';
+import Lock from './Lock';
 
 const is = type => value => typeof value === type;
 const isArray = Array.isArray;
@@ -71,7 +71,7 @@ function *spawn(delimiter, key, mode, owner) {
   }
 }
 
-module.exports = {
+export {
   isArray,
   isFunction,
   isInteger,

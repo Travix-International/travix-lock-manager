@@ -2,8 +2,8 @@
 
 'use strict';
 
-const LockList = require('./LockList');
-const { isArray, isFunction, normalize, spawn, validate } = require('./utilites');
+import LockList from './LockList';
+import { isArray, isFunction, normalize, spawn, validate } from './utilites';
 
 class LockMap {
   constructor(config) {
@@ -126,4 +126,4 @@ class LockMap {
   }
 }
 
-module.exports = LockMap;
+export default LockMap;

@@ -1,1 +1,2 @@
-module.exports = require('./src/LockManager');
+require("babel-polyfill");
+module.exports = require('./lib/LockManager');

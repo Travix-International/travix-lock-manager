@@ -1,8 +1,8 @@
 'use strict';
 
-const { CODES, EX, MODES, TYPES } = require('./constants');
-const { isFunction, isInteger, isObject, isString, validate } = require('./utilites');
-const LockMap = require('./LockMap');
+import { CODES, EX, MODES, TYPES } from './constants';
+import { isFunction, isInteger, isObject, isString, validate } from './utilites';
+import LockMap from './LockMap';
 
 const { defineProperties, defineProperty, freeze } = Object;
 const enumerable = true;
@@ -78,4 +78,4 @@ for (const mode of MODES) {
 
 defineProperties(LockManager, properties);
 
-module.exports = LockManager;
+export default LockManager;
