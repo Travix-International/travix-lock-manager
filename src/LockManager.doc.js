@@ -1,7 +1,6 @@
 /**
- * LockManager class. Helps to serialise access to a set of hierarchically organized resources with various levels of exclusivity. All locks are initially kept in memory but can be distributed or replicated via `acquired` and `releasing` event handlers (synchronous or asynchronous).
- * @see (@link https://en.wikipedia.org/wiki/Distributed_lock_manager)
- */
+ * LockManager class. Helps to serialise access to a set of hierarchically organized resources with various levels of exclusivity. All locks are initially kept in memory but can be distributed or replicated via `onacquire` and `onrelease` event handlers (both synchronous or asynchronous).
+  */
 class LockManager {
   /**
    * Creates new instance of the LockManager class.

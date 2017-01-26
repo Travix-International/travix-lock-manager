@@ -27,7 +27,7 @@ class Lock {
     const { key, owner, type } = this;
     return owner == null
       ? `Lock of "${key}" for "${type}"`
-      : `Lock of "${key}" by "${owner}" for "${type}"`;
+      : `Lock of "${key}" for "${type}" by "${owner}"`;
   }
 }
 
