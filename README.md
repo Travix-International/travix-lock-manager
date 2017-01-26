@@ -58,6 +58,7 @@ manager.acquire(['resource/a', 'resource/b'], NL, 'owner3');
 // Acquired: Lock of "resource/a" by "owner3" for "Null" Lock of "resource/b" by "owner3" for "Null"
 manager.release(null, NL, 'owner3');
 // Released: Lock of "resource/a" by "owner3" for "Null" Lock of "resource/b" by "owner3" for "Null"
+
 manager.keys;
 // [ '', 'resource' ]
 manager.locks;
@@ -69,8 +70,10 @@ manager.locks;
   Lock { key: 'resource', mode: 2, owner: 'owner2' }
 ]
 */
+
 manager.describe(CW);
 // 'Concurrent Write'
+
 manager.select('resource');
 /*
 Set {
