@@ -40,7 +40,11 @@
 returns short (two-letter) description of the lock mode.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+for (let i = MODES.length; --i >= 0;) {
+  const code = CODES[i];
+  const mode = MODES[i];
+  return manager.acquire(code, mode).then(([lock]) => expect(lock.code).to.be.a('string').and.equal(code));
+}
 ```
 
 <a name="lock-type"></a>
@@ -48,7 +52,11 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 returns long description of the lock mode.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+for (let i = MODES.length; --i >= 0;) {
+  const mode = MODES[i];
+  const type = TYPES[i];
+  return manager.acquire(type, mode).then(([lock]) => expect(lock.type).to.be.a('string').and.equal(type));
+}
 ```
 
 <a name="lock-tostring"></a>
@@ -56,13 +64,18 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 returns string containing lock key and type if owner is not specified.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+const key = 'key',
+      mode = EX;
+return manager.acquire('key', EX).then(([lock]) => expect(lock.toString()).to.be.a('string').and.contain(key).and.contain(manager.describe(mode)));
 ```
 
 returns string containing lock key, type and owner if owner is specified.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+const key = 'key',
+      mode = EX,
+      owner = 'owner';
+return manager.acquire('key', EX, 'owner').then(([lock]) => expect(lock.toString()).to.be.a('string').and.contain(key).and.contain(manager.describe(mode)).and.contain(owner));
 ```
 
 <a name="lockmanager"></a>
