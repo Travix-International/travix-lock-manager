@@ -2,6 +2,8 @@ import chai from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 
+import 'regenerator-runtime/runtime';
+
 import LockManager from '../src/LockManager';
 
 chai.use(sinonChai);

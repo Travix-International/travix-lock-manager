@@ -5,7 +5,7 @@
 <dd><p>Lock class. Represents a particular lock on a resource.</p>
 </dd>
 <dt><a href="#LockManager">LockManager</a></dt>
-<dd><p>LockManager class. Helps to serialise access to a set of hierarchically organized resources with various levels of exclusivity. All locks are initially kept in memory but can be distributed or replicated via <code>acquired</code> and <code>releasing</code> event handlers (synchronous or asynchronous).</p>
+<dd><p>LockManager class. Helps to serialise access to a set of hierarchically organized resources with various levels of exclusivity. All locks are initially kept in memory but can be distributed or replicated via <code>onacquire</code> and <code>onrelease</code> event handlers (both synchronous or asynchronous).</p>
 </dd>
 </dl>
 
@@ -47,10 +47,9 @@ Returns string representation of this lock in format: Lock of "key" [by "owner"]
 <a name="LockManager"></a>
 
 ## LockManager
-LockManager class. Helps to serialise access to a set of hierarchically organized resources with various levels of exclusivity. All locks are initially kept in memory but can be distributed or replicated via `acquired` and `releasing` event handlers (synchronous or asynchronous).
+LockManager class. Helps to serialise access to a set of hierarchically organized resources with various levels of exclusivity. All locks are initially kept in memory but can be distributed or replicated via `onacquire` and `onrelease` event handlers (both synchronous or asynchronous).
 
 **Kind**: global class  
-**See**: (@link https://en.wikipedia.org/wiki/Distributed_lock_manager)  
 
 * [LockManager](#LockManager)
     * [new LockManager([config])](#new_LockManager_new)

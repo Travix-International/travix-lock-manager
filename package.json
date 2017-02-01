@@ -1,9 +1,11 @@
 {
   "name": "travix-lock-manager",
-  "description": "Travix Lock Manager",
-  "version": "0.2.0",
+  "description": "In-memory lock manager for NodeJs helping to serialize access to a set of hierarchically organized resources.",
+  "keywords": [
+    "lock manager"
+  ],
+  "version": "0.3.0",
   "license": "MIT",
-  "main": "index.js",
   "homepage": "https://github.com/Travix-International/travix-lock-manager#readme",
   "repository": {
     "type": "git",
@@ -22,22 +24,32 @@
       "url": "https://github.com/vladen"
     }
   ],
+  "main": "index.js",
+  "directories": {
+    "doc": "./doc",
+    "lib": "./lib"
+  },
   "scripts": {
     "build": "rimraf lib && babel src --out-dir lib",
     "check": "mocha --bail",
-    "doc": "jsdoc2md src/*.doc.js > DOC.md --global-index-format dl --member-index-format grouped --module-index-format dl --param-list-format list --property-list-format list",
+    "doc": "npm run doc:api && doc:spec",
+    "doc:api": "jsdoc2md src/*.doc.js --global-index-format dl --member-index-format grouped --module-index-format dl --param-list-format list --property-list-format list > doc/API.md",
+    "doc:spec": "mocha --reporter markdown > doc/SPEC.md",
     "lint": "eslint src/*.js test/*.spec.js",
-    "spec": "mocha --reporter markdown > SPEC.md",
+    "prepublish": "npm run check && npm run build && npm run doc",
     "test": "nyc --reporter=lcov --require babel-register mocha && nyc report",
     "travis": "codeclimate-test-reporter < coverage/lcov.info"
+  },
+  "pre-commit": ["lint", "check", "doc"],
+  "dependencies": {
+    "regenerator-runtime": "^0"
   },
   "devDependencies": {
     "babel-cli": "^6",
     "babel-core": "^6",
     "babel-eslint": "^7",
     "babel-plugin-transform-async-to-generator": "^6",
-    "babel-plugin-transform-es2015-modules-commonjs": "^6.22.0",
-    "babel-plugin-transform-runtime": "^6.22.0",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6",
     "babel-register": "^6",
     "chai": "^3",
     "chai-as-promised": "^6",
@@ -46,6 +58,7 @@
     "jsdoc-to-markdown": "^2",
     "mocha": "^3",
     "nyc": "^10",
+    "pre-commit": "^1.2.2",
     "proxyquire": "^1",
     "sinon": "^1",
     "sinon-chai": "^2"

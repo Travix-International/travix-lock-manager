@@ -16,8 +16,8 @@ Does not detect deadlocks.
 * [Installation](#installation)
 * [Usage](#usage)
 * [Scripts] (#scripts)
-* [API](https://github.com/Travix-International/travix-lock-manager/blob/master/DOC.md)
-* [Spec](https://github.com/Travix-International/travix-lock-manager/blob/master/SPEC.md)
+* [API](https://github.com/Travix-International/travix-lock-manager/blob/master/doc/API.md)
+* [SPEC](https://github.com/Travix-International/travix-lock-manager/blob/master/doc/SPEC.md)
 
 ## Installation
 
