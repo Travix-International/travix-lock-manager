@@ -15,7 +15,7 @@ Does not detect deadlocks.
 
 * [Installation](#installation)
 * [Usage](#usage)
-* [Scripts] (#scripts)
+* [Scripts](#scripts)
 * [API](https://github.com/Travix-International/travix-lock-manager/blob/master/doc/API.md)
 * [SPEC](https://github.com/Travix-International/travix-lock-manager/blob/master/doc/SPEC.md)
 
@@ -91,22 +91,16 @@ To run linting of source code and unit tests:
 $ npm run lint
 ```
 
-To run unit tests and generate coverage report:
+To run unit tests and generate test [coverage](https://codeclimate.com/github/Travix-International/travix-lock-manager/coverage) report:
 
 ```
 $ npm run test
 ```
 
-To generate [SPEC.md](https://github.com/Travix-International/travix-lock-manager/blob/master/DOC.md) file from documenting comments:
+To generate [documentation](https://github.com/Travix-International/travix-lock-manager/tree/master/doc/) files:
 
 ```
 $ npm run doc
-```
-
-To generate [SPEC.md](https://github.com/Travix-International/travix-lock-manager/blob/master/SPEC.md) file from test specifications:
-
-```
-$ npm run spec
 ```
 
 # License
