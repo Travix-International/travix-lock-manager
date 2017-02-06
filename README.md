@@ -1,10 +1,10 @@
 # travix-lock-manager
 
-[![npm](https://img.shields.io/npm/v/travix-lock-manager.svg)](https://www.npmjs.com/package/travix-lock-manager)
-[![Build Status](https://img.shields.io/travis/Travix-International/travix-lock-manager/master.svg)](https://travis-ci.org/Travix-International/travix-lock-manager)
-[![Code Climate](https://img.shields.io/codeclimate/github/Travix-International/travix-lock-manager.svg)](https://codeclimate.com/github/Travix-International/travix-lock-manager)
-[![Test Coverage](https://img.shields.io/codeclimate/coverage/github/Travix-International/travix-lock-manager.svg)](https://codeclimate.com/github/Travix-International/travix-lock-manager/coverage)
-[![Issues](https://img.shields.io/codeclimate/issues/github/Travix-International/travix-lock-manager.svg)](https://codeclimate.com/github/Travix-International/travix-lock-manager/issues)
+[![NPM](https://nodei.co/npm/travix-lock-manager.png?compact=true)](https://nodei.co/npm/travix-lock-manager)
+
+[![Build Status](https://travis-ci.org/Travix-International/travix-lock-manager.svg)](https://travis-ci.org/Travix-International/travix-lock-manager)
+[![Code Climate](https://codeclimate.com/github/Travix-International/travix-lock-manager/badges/gpa.svg)](https://codeclimate.com/github/Travix-International/travix-lock-manager)
+[![Test Coverage](https://codeclimate.com/github/Travix-International/travix-lock-manager/badges/coverage.svg)](https://codeclimate.com/github/Travix-International/travix-lock-manager/coverage)
 
 In-memory lock manager for NodeJs helping to serialize access to a set of hierarchically organized resources with various levels of exclusivity.
 
