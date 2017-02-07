@@ -1,7 +1,7 @@
 'use strict';
 
 import { CODES, EX, MODES, TYPES } from './constants';
-import { isFunction, isInteger, isObject, isString, validate } from './utilites';
+import { isFunction, isInteger, isObject, isString, validate } from './helpers';
 import LockMap from './LockMap';
 
 const { defineProperties, defineProperty, freeze } = Object;

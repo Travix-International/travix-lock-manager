@@ -1,17 +1,43 @@
 /**
- * LockManager class. Helps to serialise access to a set of hierarchically organized resources with various levels of exclusivity. All locks are initially kept in memory but can be distributed or replicated via `onacquire` and `onrelease` event handlers (both synchronous or asynchronous).
+ * LockManager class.
+ * Helps to serialise access to a set of hierarchically organized resources with various levels of exclusivity.
+ * All locks are initially kept in memory but can be distributed or replicated
+ * via `onacquire` and `onrelease` event handlers (synchronous or asynchronous)
+ * supporting transactional semantics.
   */
 class LockManager {
   /**
    * Creates new instance of the LockManager class.
    *
-   * @param {Object} [config = {}] - A configuration object.
-   * @param {String} [config.comparer = (a, b) => a === b] - Comparison function used to determine eqality of any two owners. Should return truthy value if owners are equal; falsy value otherwise.
-   * @param {String} [config.delimiter = '/'] - String delimiter used to split hierarchical keys.
-   * @param {String} [config.AcquisitionError = Error] - Error class to use when throwing error that some of requested locks cannot be acquired.
-   * @param {Function} [config.onacquire] - The `acquired` event handler. A function called each time when new locks are acquired or existing locks are prolonged with one parameter: array of lock objects. If this function throws or returns a promise which eventually rejects, all the locks that are being acquired will be removed (rollback semantics).
-   * @param {Function} [config.onrelease] - The `releasing` event handler. A function called each time when existing locks are released with one parameter: array of lock objects. If this function throws or returns a promise which eventually rejects, all the locks that are being released will be kept (rollback semantics).
-   * @param {Number} [config.timeout = 0] - Expiration period of a lock, in milliseconds.
+   * @param {Object} [config = {}]
+   * A configuration object.
+   *
+   * @param {String} [config.comparer = (owner1, owner2) => owner1 === owner2]
+   * Comparison function used to determine eqality of two owners.
+   * Should return truthy value if owners are equal, falsy otherwise.
+   * Useful when owners are represented as profile objects containing some unique property (like email).
+   *
+   * @param {String} [config.delimiter = '/']
+   * String delimiter used to split hierarchical keys.
+   *
+   * @param {String} [config.AcquireError = Error]
+   * Error constructor to denote the "some locks cannot be acquired" error.
+   *
+   * @param {Function} [config.onacquire]
+   * A function called each time when new locks are acquired or existing locks are prolonged.
+   * Accepts one parameter: array of lock objects.
+   * If this function throws an error or returns a promise which eventually rejects,
+   * all the locks that are being acquired will be removed (rollback semantics).
+   *
+   * @param {Function} [config.onrelease]
+   * A function called each time when existing locks are released.
+   * Accepts one parameter: array of lock objects.
+   * If this function throws an error or returns a promise which eventually rejects,
+   * all the locks that are being released will be kept (rollback semantics).
+   *
+   * @param {Number} [config.timeout = 0]
+   * Expiration period of a lock, in milliseconds.
+   * After this period elapses the lock will be automatically released.
    *
    * @return {LockManager}
    */
@@ -60,7 +86,7 @@ class LockManager {
   static get PW() {}
 
   /**
-   * Returns array containing short (two-letter) descriptions of all known lock modes sorted exclusivity:
+   * Returns array containing short descriptions of all known lock modes sorted by exclusivity:
    * ['EX', 'PW', 'PR', 'CW', 'CR', 'NL']
    *
    * @return {Array}
@@ -76,7 +102,7 @@ class LockManager {
   static get MODES() {}
 
   /**
-   * Returns array containing short (two-letter) descriptions of all known lock modes sorted exclusivity:
+   * Returns array containing long descriptions of all known lock modes sorted by exclusivity:
    * ['Exclusive', 'Protected Write', 'Protected Read', 'Concurrent Write', 'Concurrent Read', 'Null']
    *
    * @return {Array}
@@ -84,58 +110,95 @@ class LockManager {
   static get TYPES() {}
 
   /**
-   * Returns array of unique keys of locks that are currently held.
+   * Returns array containing unique keys of all locks that are currently held.
    *
    * @return {Array}
    */
   get keys() {}
 
   /**
-   * Returns array of all locks that are currently held.
+   * Returns array containing all locks that are currently held.
    *
    * @return {Array}
    */
   get locks() {}
 
   /**
-   * Asynchronously acquires or prolongs single or multiple locks. When multiple locks are being acquired, this operation acts via "all or nothing" principle. If at least one lock is failed to acquire, no locks will be acquired.
+   * Asynchronously acquires or prolongs single or multiple locks.
+   * When multiple locks are being acquired, this operation acts according the "all or nothing" principle.
+   * If some locks cannot be acquired or `onacquire` event handler throws (rejects to) an error
+   * no locks will be acquired.
    *
-   * @param {Array|String|Object} key - String key or lock object or array of string keys or array of lock objects to be acquired. The lock object may contain optional `key`, `mode` and `owner` properties with defaults to empty string for key and other arguments of this method for other properties.
-   * @param {Array|Number} [mode = EX] - Single lock mode or bitwise combination ( PW | CR) of lock modes to acquire. Multiple modes are attempted in order from most restrictive to less restrictive. Use the correponsing constants exported by this module.
-   * @param {String} [owner] - Lock owner. Arbitrary value denoting a lock owner.
+   * @param {Array|String|Object} items
+   * String key or lock object or array of string keys or array of lock objects to be acquired.
+   * The lock object must contain `key` property.
+   * Also it may contain `mode` and `owner` properties defaulting to the matching arguments of this method.
    *
-   * @return {Promise} A promise resolving to array of locks that were affected by this operation or rejecting with error thrown by the `acquired` event handler or error stating that not all the requested locks could be acquired.
+   * @param {Number} [mode = EX]
+   * Single lock mode or bitwise combination ( PW | CR) of lock modes to acquire.
+   * Combined modes are attempted in order from the most restrictive.
+   * That is the most possible exclusive mode will be eventually acquired.
+   *
+   * @param {String} [owner]
+   * Arbitrary value denoting a lock owner.
+   *
+   * @return {Promise}
+   * A promise resolving to array of locks that were acquired or prolonged by this operation,
+   * or rejecting with the error thrown by `onacquire` event handler
+   * or rejecting with new instance of `AcquireError`.
    */
-  acquire(key, mode, owner) {}
+  acquire(items, mode, owner) {}
 
   /**
-   * Returns human readable string describing specified lock mode.
+   * Returns string describing specified lock mode.
    *
-   * @param {Number|String} mode - Lock mode to describe.
-   * @param {boolean} [short = false] - Type of description to return: short (2 letters) or long.
+   * @param {Number|String} mode
+   * Lock mode to describe.
    *
-   * @return {String} Human readable description of the mode.
+   * @param {boolean} [short = false]
+   * Type of description to return: short (true) or long (false).
+   *
+   * @return {String}
+   * Description of lock mode.
    */
   describe(mode, short) {}
 
   /**
-   * Asynchronously releases single or multiple locks. When multiple locks are being released, this operation acts via "at least anything" principle. If one lock is failed to release, other locks will still be released.
+   * Asynchronously releases single or multiple locks.
+   * When multiple locks are being released, this operation acts according the "anything" principle.
+   * If some locks cannot be released, other passed locks will still be released.
+   * But if `onacquire` event handler throws an error, all locks being released will be restored.
    *
-   * @param {Array|String|Object|Null} - String key or lock object or array of string keys or array of lock objects to be release. The lock object may contain optional `key`, `mode` and `owner` properties with defaults to empty string for key and other arguments of this method for other properties. If null was passed, all the locks with the specified mode and belonging to the specified owner will be released.
-   * @param {Number} [mode = EX] - Single lock mode or bitwise combination ( PW | CR) of lock modes to release. Use the correponsing constants exported by this module.
-   * @param {Any} [owner] - Lock owner. Arbitrary value denoting a lock owner.
+   * @param {Array|String|Object|Null}
+   * String key or lock object or array of string keys or array of lock objects to be released.
+   * Or null (undefined) to release matching locks for all existing keys.
+   * The lock object must contain `key` property.
+   * Also it may contain `mode` and `owner` properties defaulting to the matching arguments of this method.
    *
-   * @return {Promise} A promise resolving to array of locks that were affected by this operation or rejecting with error thrown by the `releasing` event handler.
+   * @param {Number} [mode = EX]
+   * Single lock mode or bitwise combination ( PW | CR) of lock modes to release.
+   *
+   * @param {Any} [owner]
+   * Arbitrary value denoting a lock owner.
+   *
+   * @return {Promise}
+   * A promise resolving to array of locks that were released
+   * or rejecting with the error thrown by `onrelease` event handler.
    */
   release(key, mode, owner) {}
 
   /**
-   * Selects and returns locks corresponding to specified keys and passing predicate check.
+   * Selects and returns locks corresponding to the specified keys and predicate check.
    *
-   * @param {Array|String} [key = null] - Key or array of keys to limit selection with. If omitted, all existing keys will be considered.
-   * @param {Function} [predicate = null] - Function accepting lock argument and returning truthy value if this lock is to be selected.
+   * @param {Array|String} [key = null]
+   * Key or array of keys to limit selection with.
+   * If omitted, all existing keys will be selected.
    *
-   * @return {Set} Set of selected locks.
+   * @param {Function} [predicate = null]
+   * Function accepting lock argument and returning truthy value if this lock should be selected.
+   *
+   * @return {Set}
+   * Set of selected locks.
    */
   select(key, predicate) {}
 }

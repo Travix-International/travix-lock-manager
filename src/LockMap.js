@@ -1,9 +1,59 @@
-/* global Map, Set */
-
 'use strict';
 
+import { CODES, MODES } from './constants';
+import { isFunction, isString, isObject, validate } from './helpers';
+import Lock from './Lock';
 import LockList from './LockList';
-import { isArray, isFunction, normalize, spawn, validate } from './utilites';
+
+const isArray = Array.isArray;
+
+function normalize(delimiter, key, name = 'key') {
+  key = validate(name, 'a string', key, isString);
+  const { length } = delimiter;
+  if (length) {
+    while (key.startsWith(delimiter)) {
+      key = key.substring(length);
+    }
+    while (key.endsWith(delimiter)) {
+      key = key.substring(0, key.length - length);
+    }
+  }
+  return key;
+}
+
+function *spawn(delimiter, items, mode, owner) {
+  const modes = [];
+  let total = 0;
+  for (const priority of MODES) {
+    if (priority & mode) {
+      modes.push(priority);
+      total |= priority;
+    }
+  }
+  validate('mode', 'known lock modes', total, total === mode);
+  mode = modes.shift();
+  const locks = items.map(item =>
+    isObject(item)
+      ? new Lock(
+          normalize(delimiter, item.key, 'lock.key'),
+          item.mode == null
+            ? mode
+            : validate('lock.mode', 'known lock mode', item.mode, CODES[item.mode] != null),
+          item.owner == null
+            ? owner
+            : item.owner
+        )
+      : new Lock(normalize(delimiter, item), mode, owner)
+  );
+  yield locks;
+  while (modes.length) {
+    mode = modes.shift();
+    for (let i = locks.length; --i >= 0;) {
+      locks[i] = new Lock(locks[i].key, mode, owner);
+    }
+    yield locks;
+  }
+}
 
 class LockMap {
   constructor(config) {
@@ -29,51 +79,62 @@ class LockMap {
 
   async acquire(key, mode, owner) {
     const { config: { AcquireError, delimiter, onacquire }, lists } = this;
+    const acquired = [];
     const failed = [];
-    for (const locks of spawn(delimiter, key, mode, owner)) {
-      const passed = [];
-      let success = true;
-      for (const lock of locks) {
-        const list = this.resolve(lock.key);
-        if (!list.acquire(lock, passed, failed)) {
-          list.remove(lock);
-          success = false;
-          break;
+    const keys = key == null
+      ? []
+      : isArray(key) ? key : [key];
+    if (keys.length) {
+      const spawned = spawn(delimiter, keys, mode, owner);
+      for (const locks of spawned) {
+        acquired.length = 0;
+        let success = true;
+        for (const lock of locks) {
+          const list = this.resolve(lock.key);
+          if (!list.acquire(lock, acquired, failed)) {
+            list.remove(lock);
+            success = false;
+            break;
+          }
+        }
+        if (success) {
+          try {
+            await onacquire(acquired);
+            for (const lock of acquired) lists.get(lock.key).extend(lock);
+            return acquired;
+          } catch (error) {
+            for (const lock of acquired) lists.get(lock.key).remove(lock);
+            throw error;
+          }
         }
       }
-      if (success) {
-        try {
-          await onacquire(passed);
-          for (const lock of passed) lists.get(lock.key).extend(lock);
-          return passed;
-        } catch (error) {
-          for (const lock of passed) lists.get(lock.key).remove(lock);
-          throw error;
-        }
-      }
+      throw new AcquireError('Some requested locks cannot be acquired', failed);
     }
-    throw new AcquireError('Some requested locks cannot be acquired', failed);
+    return acquired;
   }
 
   async release(key, mode, owner) {
     const { config: { delimiter, onrelease }, lists } = this;
-    key = key == null
+    const keys = key == null
       ? Array.from(lists.keys())
-      : key;
-    const passed = [];
-    for (const locks of spawn(delimiter, key, mode, owner)) {
-      for (const lock of locks) {
-        this.resolve(lock.key).release(lock, passed);
+      : isArray(key) ? key : [key];
+    const released = [];
+    if (keys.length) {
+      const spawned = spawn(delimiter, keys, mode, owner);
+      for (const locks of spawned) {
+        for (const lock of locks) {
+          this.resolve(lock.key).release(lock, released);
+        }
+      }
+      try {
+        if (released.length) await onrelease(released);
+        for (const lock of released) lists.get(lock.key).remove(lock);
+      } catch (error) {
+        for (const lock of released) lists.get(lock.key).extend(lock);
+        throw error;
       }
     }
-    try {
-      if (passed.length) await onrelease(passed);
-      for (const lock of passed) lists.get(lock.key).remove(lock);
-      return passed;
-    } catch (error) {
-      for (const lock of passed) lists.get(lock.key).extend(lock);
-      throw error;
-    }
+    return released;
   }
 
   resolve(key) {

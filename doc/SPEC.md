@@ -23,6 +23,8 @@
      - [.describe(mode)](#new-lockmanagerconfigobject-describemode)
      - [.keys](#new-lockmanagerconfigobject-keys)
      - [.release()](#new-lockmanagerconfigobject-release)
+     - [.release(key:string)](#new-lockmanagerconfigobject-releasekeystring)
+     - [.release(keys:string[])](#new-lockmanagerconfigobject-releasekeysstring)
      - [.select](#new-lockmanagerconfigobject-select)
      - [.select()](#new-lockmanagerconfigobject-select)
      - [.select(key)](#new-lockmanagerconfigobject-selectkey)
@@ -116,12 +118,6 @@ throws if config.AcquireError is not a function.
 ```js
 const operation = () => new LockManager({ AcquireError: 42 });
 expect(operation).to.throw(TypeError);
-```
-
-rejects with instance of config.AcquireError when fails to acquire lock initialized with failed locks.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
 throws if config.comparer is not a function.
@@ -258,7 +254,7 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-acquire"></a>
 ## .acquire()
-rejects if called without arguments.
+resolves to an empty array.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -393,6 +389,12 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 ```
 
 rejects if acquired lock conflicts on ancestor level.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+rejects with instance of config.AcquireError containing locks property with array of locks failed to acquire.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -552,7 +554,23 @@ releases all keys.
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
+resolves to an empty array if there is nothing to release.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+<a name="new-lockmanagerconfigobject-releasekeystring"></a>
+## .release(key:string)
 does not release lock twice if it is already pending for callback.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+<a name="new-lockmanagerconfigobject-releasekeysstring"></a>
+## .release(keys:string[])
+releases specified keys.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });

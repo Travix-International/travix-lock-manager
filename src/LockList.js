@@ -30,7 +30,10 @@ class LockList {
       }
     }
     const { parent } = this;
-    if (parent && !parent.capture(lock)) return false;
+    if (parent && !parent.capture(lock)) {
+      failed.push(lock);
+      return false;
+    }
     pending.add(lock);
     locks.push(lock);
     passed.push(lock);
