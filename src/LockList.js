@@ -3,7 +3,8 @@
 import { COMPATIBILITIES, ESCALATIONS } from './constants';
 import Lock from './Lock';
 
-const captures = new WeakMap;
+const { defineProperty } = Object;
+
 const pending = new WeakSet;
 const timers = new WeakMap;
 
@@ -41,30 +42,29 @@ class LockList {
   }
 
   capture(lock) {
-    const { key, locks } = this;
-    const { mode, owner } = lock;
-    const escalation = ESCALATIONS[mode];
+    const { locks } = this;
+    const escalation = ESCALATIONS[lock.mode];
     const compatibility = COMPATIBILITIES[escalation];
     for (const present of locks) {
       if (!(present.mode & compatibility)) return false;
     }
-    const capture = new Lock(key, escalation, owner, false);
-    let { parent } = this;
-    if (parent && !parent.capture(capture)) return false;
-    captures.set(lock, capture);
-    locks.push(capture);
+    const { key, parent } = this;
+    const captured = new Lock(key, escalation, lock.owner, false);
+    if (parent && !parent.capture(captured)) return false;
+    defineProperty(lock, 'parent', { value: captured });
+    locks.push(captured);
     return true;
   }
 
   extend(lock) {
-    const { config: { onrelease, timeout } } = this;
     pending.delete(lock);
+    const { config: { timeout } } = this;
     if (!timeout) return;
     clearTimeout(timers.get(lock));
     timers.set(lock, setTimeout(
       async () => {
         try {
-          await onrelease([lock]);
+          await this.config.onrelease([lock]);
           this.remove(lock);
         } catch (error) {
           this.extend(lock);
@@ -89,7 +89,7 @@ class LockList {
   }
 
   remove(lock) {
-    const { locks, parent } = this;
+    const { locks } = this;
     for (let i = locks.length; --i >= 0;) {
       if (lock === locks[i]) {
         pending.delete(lock);
@@ -97,7 +97,8 @@ class LockList {
         break;
       }
     }
-    if (parent) parent.remove(captures.get(lock));
+    const { parent } = this;
+    if (parent) parent.remove(lock.parent);
   }
 }
 

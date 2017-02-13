@@ -11,7 +11,7 @@ In-memory lock manager for NodeJs helping to serialize access to a set of hierar
 Supports transactional semantics and can be easily persisted/distributed.
 Does not detect deadlocks.
 
-> See more information about [Distributed lock managers](https://en.wikipedia.org/wiki/Distributed_lock_manager) on Wikipedia.
+> See more information about lock managers on [Wikipedia](https://en.wikipedia.org/wiki/Distributed_lock_manager).
 
 * [Installation](#installation)
 * [Usage](#usage)
