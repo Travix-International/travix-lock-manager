@@ -1,6 +1,7 @@
 # TOC
    - [lock](#lock)
      - [.code](#lock-code)
+     - [.parent](#lock-parent)
      - [.type](#lock-type)
      - [.toString()](#lock-tostring)
    - [LockManager](#lockmanager)
@@ -8,6 +9,7 @@
    - [new LockManager(config)](#new-lockmanagerconfig)
    - [new LockManager(config:object)](#new-lockmanagerconfigobject)
      - [.acquire()](#new-lockmanagerconfigobject-acquire)
+     - [.acquire(key)](#new-lockmanagerconfigobject-acquirekey)
      - [.acquire(key:string)](#new-lockmanagerconfigobject-acquirekeystring)
      - [.acquire(key:string, mode)](#new-lockmanagerconfigobject-acquirekeystring-mode)
      - [.acquire(key:string, mode:number)](#new-lockmanagerconfigobject-acquirekeystring-modenumber)
@@ -22,6 +24,7 @@
      - [.describe()](#new-lockmanagerconfigobject-describe)
      - [.describe(mode)](#new-lockmanagerconfigobject-describemode)
      - [.keys](#new-lockmanagerconfigobject-keys)
+     - [.locks](#new-lockmanagerconfigobject-locks)
      - [.release()](#new-lockmanagerconfigobject-release)
      - [.release(key:string)](#new-lockmanagerconfigobject-releasekeystring)
      - [.release(keys:string[])](#new-lockmanagerconfigobject-releasekeysstring)
@@ -39,26 +42,44 @@
 # lock
 <a name="lock-code"></a>
 ## .code
-returns short (two-letter) description of the lock mode.
+gets short (two-letter) description of the lock mode.
 
 ```js
+const promises = [];
 for (let i = MODES.length; --i >= 0;) {
   const code = CODES[i];
   const mode = MODES[i];
-  return manager.acquire(code, mode).then(([lock]) => expect(lock.code).to.be.a('string').and.equal(code));
+  promises.push(manager.acquire(code, mode).then(([lock]) => expect(lock.code).to.be.a('string').and.equal(code)));
 }
+return Promise.all(promises);
+```
+
+<a name="lock-parent"></a>
+## .parent
+gets undefined if lock is acquired on top-level key.
+
+```js
+manager.acquire('').then(([lock]) => expect(lock.parent).to.be.undefined)
+```
+
+gets parent lock object if lock is acquired on non-top-level key.
+
+```js
+manager.acquire('parent/child').then(([lock]) => expect(lock.parent).to.have.property('key').that.equal('parent'))
 ```
 
 <a name="lock-type"></a>
 ## .type
-returns long description of the lock mode.
+gets long description of the lock mode.
 
 ```js
+const promises = [];
 for (let i = MODES.length; --i >= 0;) {
   const mode = MODES[i];
   const type = TYPES[i];
-  return manager.acquire(type, mode).then(([lock]) => expect(lock.type).to.be.a('string').and.equal(type));
+  promises.push(manager.acquire(type, mode).then(([lock]) => expect(lock.type).to.be.a('string').and.equal(type)));
 }
+return Promise.all(promises);
 ```
 
 <a name="lock-tostring"></a>
@@ -90,10 +111,10 @@ expect(LockManager).to.be.a('function')
 
 <a name="new-lockmanager"></a>
 # new LockManager
-returns instance of LockManager.
+creates new instance of LockManager.
 
 ```js
-expect(new LockManager()).to.be.instanceof(LockManager)
+expect(new LockManager()).to.be.instanceof(LockManager);
 ```
 
 <a name="new-lockmanagerconfig"></a>
@@ -107,10 +128,10 @@ expect(operation).to.throw(TypeError);
 
 <a name="new-lockmanagerconfigobject"></a>
 # new LockManager(config:object)
-returns instance of LockManager.
+creates new instance of LockManager.
 
 ```js
-expect(new LockManager({})).to.be.instanceof(LockManager)
+expect(new LockManager({})).to.be.instanceof(LockManager);
 ```
 
 throws if config.AcquireError is not a function.
@@ -127,18 +148,6 @@ const operation = () => new LockManager({ comparer: 'test' });
 expect(operation).to.throw(TypeError);
 ```
 
-calls config.comparer to compare owners.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-if config.comparer is not passed uses equality to compare owners.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
 throws if config.delimiter is not a string.
 
 ```js
@@ -146,13 +155,7 @@ const operation = () => new LockManager({ delimiter: null });
 expect(operation).to.throw(TypeError);
 ```
 
-removes leading and trailing config.delimiter from the key.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-accepts empty delimiter.
+accepts empty config.delimiter.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -165,36 +168,6 @@ const operation = () => new LockManager({ onacquire: 'test' });
 expect(operation).to.throw(TypeError);
 ```
 
-calls config.onacquire with array containing onacquire lock.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-does not call config.onacquire when lock has not been acquired.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-calls config.onacquire with array containing existing lock when it is reacquired.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-rejects with error thrown by config.onacquire when acquiring lock.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-cancels acquire operation if config.onacquire throws.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
 throws if config.onrelease is not a function.
 
 ```js
@@ -203,30 +176,6 @@ expect(operation).to.throw(TypeError);
 ```
 
 calls config.onrelease when expired lock is being released.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-does not call config.onrelease when lock has not been released.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-rejects with error thrown by config.onrelease when releasing lock.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-cancels release operation if config.onrelease throws.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-extends expired lock if config.onrelease throws.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -246,12 +195,6 @@ const operation = () => new LockManager({ timeout: -1 });
 expect(operation).to.throw(TypeError);
 ```
 
-removes acquired lock after timeout.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
 <a name="new-lockmanagerconfigobject-acquire"></a>
 ## .acquire()
 resolves to an empty array.
@@ -260,9 +203,41 @@ resolves to an empty array.
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
+<a name="new-lockmanagerconfigobject-acquirekey"></a>
+## .acquire(key)
+eventually throws TypeError if key is not a string or array of strings or object or array of objects.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
 <a name="new-lockmanagerconfigobject-acquirekeystring"></a>
 ## .acquire(key:string)
-rejects if key is not a string or array of strings or object or array of objects.
+removes leading and trailing config.delimiter from the key.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+removes expired lock automatically.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+eventually throws error thrown by onacquire handler.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+cancels acquire operation, if onacquire handler throws an error.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+extends expired lock if onrelease handler throws.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -270,13 +245,13 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-acquirekeystring-mode"></a>
 ## .acquire(key:string, mode)
-rejects if mode is not a number.
+eventually throws TypeError if mode is not a number.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-rejects if mode is unknown.
+eventually throws TypeError if mode is unknown.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -284,19 +259,19 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-acquirekeystring-modenumber"></a>
 ## .acquire(key:string, mode:number)
-resolves with array containing new lock for specified key and mode.
+eventually returns array containing new lock for specified key and mode.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-resolves with array containing existing lock when invoked twice with the same arguments.
+eventually returns array containing existing lock when it has not expired.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-resolves with array containing new most restrictive available lock for specified key and mode combined from two flags.
+eventually returns array containing new most restrictive available lock for specified key and mode combined from two flags.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -344,13 +319,13 @@ prolongs lifespan of reacquired lock.
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-rejects if acquired lock conflicts on same level.
+eventually throws AcquireError initialized with array containing lock that conflicts on the same level.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-rejects if acquired lock conflicts on parent level.
+eventually throws AcquireError initialized with array containing lock that on the parent level.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -364,37 +339,61 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-acquirekeystring-modenumber-owner"></a>
 ## .acquire(key:string, mode:number, owner)
-resolves with array containing new lock for specified key, mode and owner.
+uses config.comparer to compare owners.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-resolves with array containing new most restrictive lock for specified key and mode combined from two flags.
+uses strict equality to compare owners if config.comparer is not set.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-rejects if acquired lock conflicts on same level.
+eventually returns array containing new lock for specified key, mode and owner.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-rejects if acquired lock conflicts on parent level.
+eventually returns array containing new most restrictive lock for specified key, combination of modes and owner.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-rejects if acquired lock conflicts on ancestor level.
+eventually throws AcquireError initalized with array of locks conflicting on the same level.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-rejects with instance of config.AcquireError containing locks property with array of locks failed to acquire.
+eventually throws AcquireError initalized with array of locks conflicting on the parent level.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+eventually throws AcquireError initalized with array of locks conflicting on the ancestor level.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+calls onacquire handler once with array containing acquired lock.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+does not call onacquire handler if lock has not been acquired.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+calls onacquire handler with array containing existing lock if it has been re-acquired.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -402,7 +401,13 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-acquirekeysstring-modenumber"></a>
 ## .acquire(keys:string[], mode:number)
-resolves with array containing two new locks for specified keys and mode.
+eventually returns array containing two new locks for specified keys and mode.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+eventually throws AcquireError initalized with array of locks conflicting on the same level.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -410,7 +415,7 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-acquirekeysstring-modenumber-owner"></a>
 ## .acquire(keys:string[], mode:number, owner)
-cancels operation if at least one lock being acquired conflicts with existing.
+rollbacks operation if lock being acquired conflicts with existing one.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -418,19 +423,19 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-acquirelockobject"></a>
 ## .acquire(lock:object)
-rejects if lock.key is not string.
+eventually throws TypeError if lock.key is not a string.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-rejects if lock.mode is not known mode.
+eventually throws TypeError if lock.mode is not a known mode.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-resolves with array containing new lock for specified lock.key, lock.mode and lock.owner.
+eventually returns array containing new lock for specified lock.key, lock.mode and lock.owner.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -450,7 +455,7 @@ rejects if locks[].mode is not known mode.
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-resolves with array containing new locks for specified locks[].key, locks[].mode and locks[].owner.
+eventually returns array containing new locks for specified locks[].key, locks[].mode and locks[].owner.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -458,13 +463,13 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-acquirelockobject-modenumber"></a>
 ## .acquire(lock:object, mode:number)
-resolves with array containing new lock for specified mode if lock.mode is not defined.
+eventually returns array containing new lock for specified mode if lock.mode is not defined.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-resolves with array containing new lock for specified lock.mode if it is defined.
+eventually returns array containing new lock for specified lock.mode if it is defined.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -472,13 +477,13 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-acquirelocksobject-modenumber"></a>
 ## .acquire(locks:object[], mode:number)
-resolves with array containing new locks for specified mode if locks[].mode is not defined.
+eventually returns array containing new locks for specified mode if locks[].mode is not defined.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-resolves with array containing new locks for specified locks[].mode if it is defined.
+eventually returns array containing new locks for specified locks[].mode if it is defined.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -486,13 +491,13 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-acquirelocksobject-modenumber-owner"></a>
 ## .acquire(locks:object[], mode:number, owner)
-resolves with array containing new locks for specified owner if locks[].owner is not defined.
+eventually returns array containing new locks for specified owner if locks[].owner is not defined.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-resolves with array containing new locks for specified locks[].owner if it is defined.
+eventually returns array containing new locks for specified locks[].owner if it is defined.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -528,19 +533,51 @@ expect(manager.describe(-1)).to.be.undefined
 
 <a name="new-lockmanagerconfigobject-keys"></a>
 ## .keys
-is empty array initially.
+gets empty array if no locks were acquired.
 
 ```js
-expect(manager.keys).to.be.an('array').and.be.empty
+expect(manager.keys).to.be.an('array').and.be.empty;
 ```
 
-contains hierarchy of acquired keys.
+gets array that contains hierarchy of acquired keys.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-does not contain hierarchy of released keys.
+gets array that does not contain hierarchy of released keys.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+gets empty array after all locks have been released.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+<a name="new-lockmanagerconfigobject-locks"></a>
+## .locks
+gets empty array if no locks have been acquired.
+
+```js
+expect(manager.locks).to.be.an('array').and.be.empty;
+```
+
+gets array that contains hierarchy of acquired keys.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+gets array that does not contain hierarchy of released keys.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+gets empty array after all locks were released.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -548,13 +585,19 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-release"></a>
 ## .release()
-releases all keys.
+resolves to an empty array if there is nothing to release.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
-resolves to an empty array if there is nothing to release.
+does not call config.onrelease if there is nothing to release.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+releases all previously acquired keys.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
@@ -562,7 +605,19 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 
 <a name="new-lockmanagerconfigobject-releasekeystring"></a>
 ## .release(key:string)
-does not release lock twice if it is already pending for callback.
+does not release lock again if it waits for onrelease handler to complete.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+eventually throws error thrown by onrelease handler.
+
+```js
+var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+```
+
+rollbacks operation if onrelease handler throws.
 
 ```js
 var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });

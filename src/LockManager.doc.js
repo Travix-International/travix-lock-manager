@@ -21,7 +21,8 @@ class LockManager {
    * String delimiter used to split hierarchical keys.
    *
    * @param {String} [config.AcquireError = Error]
-   * Error constructor to denote the "some locks cannot be acquired" error.
+   * Constructor function creating error object to denote the "some locks cannot be acquired" error.
+   * Accepts 2 arguments: string message and array of failed locks.
    *
    * @param {Function} [config.onacquire]
    * A function called each time when new locks are acquired or existing locks are prolonged.

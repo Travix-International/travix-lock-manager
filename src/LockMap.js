@@ -92,7 +92,6 @@ class LockMap {
         for (const lock of locks) {
           const list = this.resolve(lock.key);
           if (!list.acquire(lock, acquired, failed)) {
-            list.remove(lock);
             success = false;
             break;
           }

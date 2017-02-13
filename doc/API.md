@@ -98,7 +98,8 @@ Creates new instance of the LockManager class.
 Should return truthy value if owners are equal, falsy otherwise.
 Useful when owners are represented as profile objects containing some unique property (like email).
     - [.delimiter] <code>String</code> <code> = &#x27;/&#x27;</code> - String delimiter used to split hierarchical keys.
-    - [.AcquireError] <code>String</code> <code> = Error</code> - Error constructor to denote the "some locks cannot be acquired" error.
+    - [.AcquireError] <code>String</code> <code> = Error</code> - Constructor function creating error object to denote the "some locks cannot be acquired" error.
+Accepts 2 arguments: string message and array of failed locks.
     - [.onacquire] <code>function</code> - A function called each time when new locks are acquired or existing locks are prolonged.
 Accepts one parameter: array of lock objects.
 If this function throws an error or returns a promise which eventually rejects,
