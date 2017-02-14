@@ -1,6 +1,6 @@
 'use strict';
 
-import { CODES, TYPES } from './constants';
+const { CODES, TYPES } = require('./constants');
 
 const { defineProperties } = Object;
 const enumerable = true;
@@ -31,4 +31,4 @@ class Lock {
   }
 }
 
-export default Lock;
+module.exports = Lock;

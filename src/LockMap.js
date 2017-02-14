@@ -1,9 +1,9 @@
 'use strict';
 
-import { CODES, MODES } from './constants';
-import { isFunction, isString, isObject, validate } from './helpers';
-import Lock from './Lock';
-import LockList from './LockList';
+const { CODES, MODES } = require('./constants');
+const { isFunction, isString, isObject, validate } = require('./helpers');
+const Lock = require('./Lock');
+const LockList = require('./LockList');
 
 const isArray = Array.isArray;
 
@@ -186,4 +186,4 @@ class LockMap {
   }
 }
 
-export default LockMap;
+module.exports = LockMap;

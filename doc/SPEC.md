@@ -45,13 +45,16 @@
 gets short (two-letter) description of the lock mode.
 
 ```js
-const promises = [];
-for (let i = MODES.length; --i >= 0;) {
-  const code = CODES[i];
-  const mode = MODES[i];
-  promises.push(manager.acquire(code, mode).then(([lock]) => expect(lock.code).to.be.a('string').and.equal(code)));
-}
-return Promise.all(promises);
+async () => {
+      const { CODES, MODES } = LockManager;
+      const manager = new LockManager;
+      for (let i = MODES.length; --i >= 0;) {
+        const code = CODES[i];
+        const mode = MODES[i];
+        const [lock] = await manager.acquire(code, mode);
+        expect(lock.code).to.be.a('string').which.equals(code);
+      }
+    }
 ```
 
 <a name="lock-parent"></a>
@@ -59,13 +62,21 @@ return Promise.all(promises);
 gets undefined if lock is acquired on top-level key.
 
 ```js
-manager.acquire('').then(([lock]) => expect(lock.parent).to.be.undefined)
+async () => {
+      const manager = new LockManager;
+      const [lock] = await manager.acquire('');
+      expect(lock.parent).to.be.undefined;
+    }
 ```
 
 gets parent lock object if lock is acquired on non-top-level key.
 
 ```js
-manager.acquire('parent/child').then(([lock]) => expect(lock.parent).to.have.property('key').that.equal('parent'))
+async () => {
+      const manager = new LockManager;
+      const [lock] = await manager.acquire('parent/child');
+      expect(lock.parent).to.be.an('object').with.property('key').which.equals('parent');
+    }
 ```
 
 <a name="lock-type"></a>
@@ -73,13 +84,16 @@ manager.acquire('parent/child').then(([lock]) => expect(lock.parent).to.have.pro
 gets long description of the lock mode.
 
 ```js
-const promises = [];
-for (let i = MODES.length; --i >= 0;) {
-  const mode = MODES[i];
-  const type = TYPES[i];
-  promises.push(manager.acquire(type, mode).then(([lock]) => expect(lock.type).to.be.a('string').and.equal(type)));
-}
-return Promise.all(promises);
+async () => {
+      const { MODES, TYPES } = LockManager;
+      const manager = new LockManager;
+      for (let i = MODES.length; --i >= 0;) {
+        const mode = MODES[i];
+        const type = TYPES[i];
+        const [lock] = await manager.acquire(type, mode);
+        expect(lock.type).to.be.a('string').which.equals(type);
+      }
+    }
 ```
 
 <a name="lock-tostring"></a>
@@ -87,18 +101,25 @@ return Promise.all(promises);
 returns string containing lock key and type if owner is not specified.
 
 ```js
-const key = 'key',
-      mode = EX;
-return manager.acquire('key', EX).then(([lock]) => expect(lock.toString()).to.be.a('string').and.contain(key).and.contain(manager.describe(mode)));
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager;
+      const key = 'key', mode = EX, type = manager.describe(mode);
+      const [lock] = await manager.acquire(key, mode);
+      expect(lock.toString()).to.be.a('string').and.contain(key).and.contain(type);
+    }
 ```
 
-returns string containing lock key, type and owner if owner is specified.
+returns string containing lock key, owner and type if owner is specified.
 
 ```js
-const key = 'key',
-      mode = EX,
-      owner = 'owner';
-return manager.acquire('key', EX, 'owner').then(([lock]) => expect(lock.toString()).to.be.a('string').and.contain(key).and.contain(manager.describe(mode)).and.contain(owner));
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager;
+      const key = 'key', mode = EX, owner = 'owner', type = manager.describe(mode);
+      const [lock] = await manager.acquire(key, mode, owner);
+      expect(lock.toString()).to.be.a('string').and.contain(key).and.contain(owner).and.contain(type);
+    }
 ```
 
 <a name="lockmanager"></a>
@@ -114,7 +135,7 @@ expect(LockManager).to.be.a('function')
 creates new instance of LockManager.
 
 ```js
-expect(new LockManager()).to.be.instanceof(LockManager);
+expect(new LockManager).to.be.instanceof(LockManager)
 ```
 
 <a name="new-lockmanagerconfig"></a>
@@ -131,7 +152,7 @@ expect(operation).to.throw(TypeError);
 creates new instance of LockManager.
 
 ```js
-expect(new LockManager({})).to.be.instanceof(LockManager);
+expect(new LockManager({})).to.be.instanceof(LockManager)
 ```
 
 throws if config.AcquireError is not a function.
@@ -155,12 +176,6 @@ const operation = () => new LockManager({ delimiter: null });
 expect(operation).to.throw(TypeError);
 ```
 
-accepts empty config.delimiter.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
 throws if config.onacquire is not a function.
 
 ```js
@@ -173,12 +188,6 @@ throws if config.onrelease is not a function.
 ```js
 const operation = () => new LockManager({ onrelease: 'test' });
 expect(operation).to.throw(TypeError);
-```
-
-calls config.onrelease when expired lock is being released.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
 ```
 
 throws if config.timeout is not a number.
@@ -200,7 +209,11 @@ expect(operation).to.throw(TypeError);
 resolves to an empty array.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      const locks = await manager.acquire();
+      expect(locks).to.be.empty;
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirekey"></a>
@@ -208,39 +221,160 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 eventually throws TypeError if key is not a string or array of strings or object or array of objects.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      let error;
+      try {
+        await manager.acquire(42);
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(TypeError);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirekeystring"></a>
 ## .acquire(key:string)
-removes leading and trailing config.delimiter from the key.
+works empty delimiter.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager({ delimiter: '' });
+      const key = 'solid / key';
+      const [lock] = await manager.acquire(key);
+      expect(lock).to.have.property('key', key);
+    }
 ```
 
-removes expired lock automatically.
+removes leading and trailing delimiter from the key.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const delimiter = '|';
+      const manager = new LockManager({ delimiter });
+      const [lock] = await manager.acquire(delimiter + 'key' + delimiter + delimiter);
+      expect(lock).to.have.property('key', 'key');
+    }
+```
+
+automatically releases lock on timeout.
+
+```js
+async () => {
+      /*
+      function delay(timeout) {
+        return new Promise(resolve => setTimeout(resolve, timeout));
+      }
+      */
+      const timeout = 10;
+      const manager = new LockManager({ timeout });
+      await manager.acquire('key');
+      await delay(timeout);
+      expect(manager.locks).to.be.empty;
+    }
+```
+
+calls onrelease handler when expired lock is released on timeout.
+
+```js
+async () => {
+      const onrelease = spy();
+      const timeout = 10;
+      const manager = new LockManager({ onrelease, timeout });
+      const [lock] = await manager.acquire('key');
+      await delay(timeout);
+      expect(onrelease).to.have.been.calledOnce.and.calledWithMatch([lock]);
+    }
+```
+
+prolongs lifespan of re-acquired lock.
+
+```js
+async () => {
+      const timeout = 10;
+      const manager = new LockManager({ timeout });
+      const [lock] = await manager.acquire('key');
+      await delay(timeout / 2);
+      await manager.acquire('key');
+      await delay(timeout / 2);
+      expect(manager.locks).to.contain(lock);
+    }
+```
+
+calls onacquire handler once passing array containing acquired lock.
+
+```js
+async () => {
+      const onacquire = spy();
+      const manager = new LockManager({ onacquire });
+      const locks = await manager.acquire('key');
+      expect(onacquire).to.have.been.calledOnce.and.calledWith(locks);
+    }
+```
+
+calls onacquire handler with array containing existing lock if it has been re-acquired.
+
+```js
+async () => {
+      const onacquire = spy();
+      const manager = new LockManager({ onacquire });
+      await manager.acquire('key');
+      const locks = await manager.acquire('key');
+      expect(onacquire).to.have.been.calledTwice.and.calledWithExactly(locks);
+    }
 ```
 
 eventually throws error thrown by onacquire handler.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const handlerError = new Error;
+      const onacquire = stub().throws(handlerError);
+      const manager = new LockManager({ onacquire });
+      let error;
+      try {
+        await manager.acquire('key');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.equal(handlerError);
+    }
 ```
 
 cancels acquire operation, if onacquire handler throws an error.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const onacquire = stub().throws();
+      const manager = new LockManager({ onacquire });
+      try {
+        await manager.acquire('key');
+      } catch (e) {
+        // continue
+      }
+      expect(manager.locks).to.be.empty;
+    }
 ```
 
 extends expired lock if onrelease handler throws.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const timeout = 10;
+      const suppress = spy();
+      process.addListener('unhandledRejection', suppress);
+      const onrelease = stub().throws();
+      const manager = new LockManager({ onrelease, timeout });
+      const [lock] = await manager.acquire('key');
+      await delay(timeout);
+      const extended = manager.locks;
+      onrelease.returns();
+      await delay(timeout);
+      const expired = manager.locks;
+      process.removeListener('unhandledRejection', suppress);
+      expect(extended).to.contain(lock);
+      expect(expired).to.not.contain(lock);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirekeystring-mode"></a>
@@ -248,13 +382,31 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 eventually throws TypeError if mode is not a number.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      let error;
+      try {
+        await manager.acquire('', '');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(TypeError);
+    }
 ```
 
 eventually throws TypeError if mode is unknown.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      let error;
+      try {
+        await manager.acquire('', -1);
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(TypeError);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirekeystring-modenumber"></a>
@@ -262,141 +414,310 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 eventually returns array containing new lock for specified key and mode.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager;
+      const locks = await manager.acquire('key', EX);
+      expect(locks).to.be.an('array').and.deep.equal([
+        { key: 'key', mode: EX, owner: undefined }
+      ]);
+    }
 ```
 
-eventually returns array containing existing lock when it has not expired.
+eventually returns array containing existing lock if it has not expired.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager;
+      const [first] = await manager.acquire('key', EX);
+      const [second] = await manager.acquire('key', EX);
+      expect(first).to.equal(second);
+    }
 ```
 
-eventually returns array containing new most restrictive available lock for specified key and mode combined from two flags.
+eventually returns array containing new most restrictive available lock for specified key and combination of modes.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CR, CW } = LockManager;
+      const manager = new LockManager;
+      const locks = await manager.acquire('key', CR | CW);
+      expect(locks).to.be.an('array').and.deep.equal([
+        { key: 'key', mode: CW, owner: undefined }
+      ]);
+    }
 ```
 
-captures CR lock on parent key when acquired lock mode is CR.
+eventually captures CR lock on the parent key when requested lock mode is CR.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CR } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire('parent/child', CR);
+      expect(manager.locks).to.deep.include.members([
+        { key: 'parent', mode: CR, owner: undefined }
+      ]);
+    }
 ```
 
-captures CR lock on parent key when acuired lock mode is PR.
+eventually captures CR lock on the parent key when requested lock mode is PR.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CR, PR } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire('parent/child', PR);
+      expect(manager.locks).to.deep.include.members([
+        { key: 'parent', mode: CR, owner: undefined }
+      ]);
+    }
 ```
 
-captures CW lock on parent key when acuired lock mode is CW.
+eventually captures CW lock on the parent key when acuired lock mode is CW.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CW } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire('parent/child', CW);
+      expect(manager.locks).to.deep.include.members([
+        { key: 'parent', mode: CW, owner: undefined }
+      ]);
+    }
 ```
 
-captures CW lock on parent key when acuired lock mode is EX.
+eventually captures CW lock on the parent key when acuired lock mode is EX.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CW, EX } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire('parent/child', EX);
+      expect(manager.locks).to.deep.include.members([
+        { key: 'parent', mode: CW, owner: undefined }
+      ]);
+    }
 ```
 
-captures CW lock on parent key when acuired lock mode is PW.
+eventually captures CW lock on parent key when acuired lock mode is PW.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CW, PW } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire('parent/child', PW);
+      expect(manager.locks).to.deep.include.members([
+        { key: 'parent', mode: CW, owner: undefined }
+      ]);
+    }
 ```
 
-captures NL lock on parent key when acuired lock mode is NL.
+eventually captures NL lock on parent key when acuired lock mode is NL.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-prolongs lifespan of reacquired lock.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-eventually throws AcquireError initialized with array containing lock that conflicts on the same level.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-eventually throws AcquireError initialized with array containing lock that on the parent level.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-rejects if acquired lock conflicts on ancestor level.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-<a name="new-lockmanagerconfigobject-acquirekeystring-modenumber-owner"></a>
-## .acquire(key:string, mode:number, owner)
-uses config.comparer to compare owners.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-uses strict equality to compare owners if config.comparer is not set.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-eventually returns array containing new lock for specified key, mode and owner.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-eventually returns array containing new most restrictive lock for specified key, combination of modes and owner.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-eventually throws AcquireError initalized with array of locks conflicting on the same level.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-eventually throws AcquireError initalized with array of locks conflicting on the parent level.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-eventually throws AcquireError initalized with array of locks conflicting on the ancestor level.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-calls onacquire handler once with array containing acquired lock.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { NL } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire('parent/child', NL);
+      expect(manager.locks).to.deep.include.members([
+        { key: 'parent', mode: NL, owner: undefined }
+      ]);
+    }
 ```
 
 does not call onacquire handler if lock has not been acquired.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { EX, PW } = LockManager;
+      const onacquire = spy();
+      const manager = new LockManager({ onacquire });
+      const locks = await manager.acquire('key', EX);
+      try {
+        await manager.acquire('key', PW);
+      } catch (e) {
+        // continue
+      }
+      expect(onacquire).to.have.been.calledOnce.and.calledWith(locks);
+    }
 ```
 
-calls onacquire handler with array containing existing lock if it has been re-acquired.
+eventually throws AcquireError initialized with array of locks conflicting on the same level.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      /*
+      class AcquireError extends Error {
+        constructor(message, locks) {
+          super(message);
+          this.locks = locks;
+        }
+      }
+      */
+      const { EX, PW } = LockManager;
+      const manager = new LockManager({ AcquireError });
+      await manager.acquire('parent/child', EX);
+      let error;
+      try {
+        await manager.acquire('parent/child', PW);
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([{
+        key: 'parent/child', mode: PW, owner: undefined
+      }]);
+    }
+```
+
+eventually throws AcquireError initialized with array of locks conflicting on the parent level.
+
+```js
+async () => {
+      const { EX, PW } = LockManager;
+      const manager = new LockManager({ AcquireError });
+      await manager.acquire('parent', EX);
+      let error;
+      try {
+        await manager.acquire('parent/child', PW);
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([{
+        key: 'parent/child', mode: PW, owner: undefined
+      }]);
+    }
+```
+
+eventually throws AcquireError initialized with array of locks conflicting on the ancestor level.
+
+```js
+async () => {
+      const { EX, PW } = LockManager;
+      const manager = new LockManager({ AcquireError });
+      await manager.acquire('ancestor', EX);
+      let error;
+      try {
+        await manager.acquire('ancestor/parent/child', PW);
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([{
+        key: 'ancestor/parent/child', mode: PW, owner: undefined
+      }]);
+    }
+```
+
+<a name="new-lockmanagerconfigobject-acquirekeystring-modenumber-owner"></a>
+## .acquire(key:string, mode:number, owner)
+uses configured comparer to compare owners.
+
+```js
+async () => {
+      const { NL } = LockManager;
+      const comparer = spy((owner1, owner2) => owner1 === owner2);
+      const manager = new LockManager({ comparer });
+      await manager.acquire('key', NL, 'owner1');
+      await manager.acquire('key', NL, 'owner2');
+      expect(comparer).to.be.calledWith('owner1', 'owner2');
+    }
+```
+
+uses strict equality to compare owners if comparer is not configured.
+
+```js
+async () => {
+      const { NL } = LockManager;
+      const manager = new LockManager;
+      const [lock1] = await manager.acquire('key', NL, 'owner');
+      const [lock2] = await manager.acquire('key', NL, 'owner');
+      expect(lock1).to.equal(lock2);
+    }
+```
+
+eventually returns array containing new lock for specified key, mode and owner.
+
+```js
+async () => {
+      const { PR } = LockManager;
+      const manager = new LockManager;
+      const locks = await manager.acquire('key', PR, 'owner');
+      expect(locks).to.be.an('array').and.deep.equal([
+        { key: 'key', mode: PR, owner: 'owner' }
+      ]);
+    }
+```
+
+eventually returns array containing new most restrictive lock for specified key, combination of modes and owner.
+
+```js
+async () => {
+      const { CR, PW } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire('key', PW, 'owner1');
+      const locks = await manager.acquire('key', CR | PW, 'owner2');
+      expect(locks).to.be.an('array').that.deep.equals([
+        { key: 'key', mode: CR, owner: 'owner2' }
+      ]);
+    }
+```
+
+eventually throws AcquireError initalized with array of locks conflicting on the same level.
+
+```js
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager({ AcquireError });
+      await manager.acquire('key', EX, 'owner1');
+      let error;
+      try {
+        await manager.acquire('key', EX, 'owner2');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
+        { key: 'key', mode: EX, owner: 'owner2' }
+      ]);
+    }
+```
+
+eventually throws AcquireError initalized with array of locks conflicting on the parent level.
+
+```js
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager({ AcquireError });
+      await manager.acquire('parent', EX, 'owner1');
+      let error;
+      try {
+        await manager.acquire('parent/child', EX, 'owner2');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
+        { key: 'parent/child', mode: EX, owner: 'owner2' }
+      ]);
+    }
+```
+
+eventually throws AcquireError initalized with array of locks conflicting on the ancestor level.
+
+```js
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager({ AcquireError });
+      await manager.acquire('ancestor', EX, 'owner1');
+      let error;
+      try {
+        await manager.acquire('ancestor/parent/child', EX, 'owner2');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
+        { key: 'ancestor/parent/child', mode: EX, owner: 'owner2' }
+      ]);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirekeysstring-modenumber"></a>
@@ -404,21 +725,53 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 eventually returns array containing two new locks for specified keys and mode.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager;
+      const locks = await manager.acquire(['key1', 'key2'], EX);
+      expect(locks).to.be.an('array').and.deep.equal([
+        { key: 'key1', mode: EX, owner: undefined },
+        { key: 'key2', mode: EX, owner: undefined }
+      ]);
+    }
 ```
 
 eventually throws AcquireError initalized with array of locks conflicting on the same level.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { EX, PW } = LockManager;
+      const manager = new LockManager({ AcquireError });
+      await manager.acquire(['key1', 'key2'], EX, 'owner1');
+      let error;
+      try {
+        await manager.acquire(['key1', 'key2'], EX | PW, 'owner2');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
+        { key: 'key1', mode: EX, owner: 'owner2' },
+        { key: 'key1', mode: PW, owner: 'owner2' }
+      ]);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirekeysstring-modenumber-owner"></a>
 ## .acquire(keys:string[], mode:number, owner)
-rollbacks operation if lock being acquired conflicts with existing one.
+cancels operation if one of requested locks conflicts with existing one.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire('key1', EX, 'owner1');
+      try {
+        await manager.acquire(['key1', 'key2'], EX, 'owner2');
+      } catch (e) {
+        // continue
+      }
+      expect(manager.keys).to.not.include('key2');
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirelockobject"></a>
@@ -426,81 +779,158 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 eventually throws TypeError if lock.key is not a string.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      let error;
+      try {
+        await manager.acquire({ key: 42 });
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(TypeError);
+    }
 ```
 
 eventually throws TypeError if lock.mode is not a known mode.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      let error;
+      try {
+        await manager.acquire({ key: 'key', mode: 3 });
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(TypeError);
+    }
 ```
 
 eventually returns array containing new lock for specified lock.key, lock.mode and lock.owner.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager;
+      const locks = await manager.acquire({ key: 'key', mode: EX, owner: 'owner' });
+      expect(locks).to.be.an('array').and.deep.equal([
+        { key: 'key', mode: EX, owner: 'owner' }
+      ]);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirelocksobject"></a>
 ## .acquire(locks:object[])
-rejects if locks[].key is not string.
+eventually throws TypeError if locks[].key is not string.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      let error;
+      try {
+        await manager.acquire([{ key: 42 }]);
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(TypeError);
+    }
 ```
 
-rejects if locks[].mode is not known mode.
+rejects throws TypeError if locks[].mode is not known mode.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      let error;
+      try {
+        await manager.acquire([{ key: 'key', mode: 3 }]);
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceof(TypeError);
+    }
 ```
 
-eventually returns array containing new locks for specified locks[].key, locks[].mode and locks[].owner.
+eventually returns array containing new locks for requested locks[].key, locks[].mode and locks[].owner.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CR, CW } = LockManager;
+      const manager = new LockManager;
+      const requested = [
+        { key: 'key1', mode: CR, owner: 'owner1' },
+        { key: 'key2', mode: CW, owner: 'owner2' }
+      ];
+      const locks = await manager.acquire(requested);
+      expect(locks).to.be.an('array').and.deep.equal(requested);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirelockobject-modenumber"></a>
 ## .acquire(lock:object, mode:number)
-eventually returns array containing new lock for specified mode if lock.mode is not defined.
+eventually returns array containing new lock for the requested mode if lock.mode is not defined.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { PW } = LockManager;
+      const manager = new LockManager;
+      const locks = await manager.acquire({ key: 'key' }, PW);
+      expect(locks).to.be.an('array').and.deep.equal([
+        { key: 'key', mode: PW, owner: undefined }
+      ]);
+    }
 ```
 
-eventually returns array containing new lock for specified lock.mode if it is defined.
+eventually returns array containing new lock for the requested lock.mode if it is defined.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { NL, PW } = LockManager;
+      const manager = new LockManager;
+      const locks = await manager.acquire({ key: 'key', mode: PW }, NL);
+      expect(locks).to.be.an('array').and.deep.equal([
+        { key: 'key', mode: PW, owner: undefined }
+      ]);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirelocksobject-modenumber"></a>
 ## .acquire(locks:object[], mode:number)
-eventually returns array containing new locks for specified mode if locks[].mode is not defined.
+eventually returns array containing new locks for the requested mode if locks[].mode is not defined.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-eventually returns array containing new locks for specified locks[].mode if it is defined.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { PW } = LockManager;
+      const manager = new LockManager;
+      const locks = await manager.acquire([{ key: 'key1' }, { key: 'key2' }], PW);
+      expect(locks).to.be.an('array').and.deep.equal([
+        { key: 'key1', mode: PW, owner: undefined },
+        { key: 'key2', mode: PW, owner: undefined }
+      ]);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-acquirelocksobject-modenumber-owner"></a>
 ## .acquire(locks:object[], mode:number, owner)
-eventually returns array containing new locks for specified owner if locks[].owner is not defined.
+eventually returns array containing new locks for requested mode and owner if locks[].mode or locks[].owner are not defined.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
-```
-
-eventually returns array containing new locks for specified locks[].owner if it is defined.
-
-```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { EX, NL, PW } = LockManager;
+      const manager = new LockManager;
+      const locks = await manager.acquire([
+        { key: 'key1' },
+        { key: 'key2', mode: PW },
+        { key: 'key3', owner: 'owner2' },
+        { key: 'key4', mode: EX, owner: 'owner3' }
+      ], NL, 'owner1');
+      expect(locks).to.be.an('array').and.deep.equal([
+        { key: 'key1', mode: NL, owner: 'owner1' },
+        { key: 'key2', mode: PW, owner: 'owner1' },
+        { key: 'key3', mode: NL, owner: 'owner2' },
+        { key: 'key4', mode: EX, owner: 'owner3' }
+      ]);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-describe"></a>
@@ -508,6 +938,7 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 returns undefined.
 
 ```js
+const manager = new LockManager;
 expect(manager.describe()).to.be.undefined
 ```
 
@@ -516,18 +947,27 @@ expect(manager.describe()).to.be.undefined
 returns long description for known modes.
 
 ```js
-MODES.forEach(mode => expect(manager.describe(mode)).to.be.a('string').and.have.length.above(2))
+const { MODES } = LockManager;
+const manager = new LockManager;
+for (const mode of MODES) {
+  expect(manager.describe(mode)).to.be.a('string').and.have.length.above(2)
+}
 ```
 
 returns short description for known modes.
 
 ```js
-MODES.forEach(mode => expect(manager.describe(mode, true)).to.be.a('string').and.have.length(2))
+const { MODES } = LockManager;
+const manager = new LockManager;
+for (const mode of MODES) {
+  expect(manager.describe(mode, true)).to.be.a('string').and.have.length(2);
+}
 ```
 
 returns undefined for unknown mode.
 
 ```js
+const manager = new LockManager;
 expect(manager.describe(-1)).to.be.undefined
 ```
 
@@ -536,25 +976,45 @@ expect(manager.describe(-1)).to.be.undefined
 gets empty array if no locks were acquired.
 
 ```js
+const manager = new LockManager;
 expect(manager.keys).to.be.an('array').and.be.empty;
 ```
 
 gets array that contains hierarchy of acquired keys.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      await manager.acquire('ancestor/parent/child');
+      expect(manager.keys).to.include.members([
+        '', 'ancestor', 'ancestor/parent', 'ancestor/parent/child'
+      ]);
+    }
 ```
 
 gets array that does not contain hierarchy of released keys.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      await manager.acquire(['ancestor1/parent1/child1', 'ancestor2/parent2/child2']);
+      await manager.release('ancestor2/parent2/child2');
+      expect(manager.keys).to.not.include.members([
+        'ancestor2', 'ancestor2/parent2', 'ancestor2/parent2/child2'
+      ]);
+    }
 ```
 
 gets empty array after all locks have been released.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      await manager.acquire('key1');
+      await manager.acquire(['key2', 'key3']);
+      await manager.release();
+      expect(manager.keys).to.be.an('array').and.be.empty;
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-locks"></a>
@@ -562,25 +1022,52 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 gets empty array if no locks have been acquired.
 
 ```js
+const manager = new LockManager;
 expect(manager.locks).to.be.an('array').and.be.empty;
 ```
 
 gets array that contains hierarchy of acquired keys.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CW, EX } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire('ancestor/parent/child', EX, 'owner');
+      expect(manager.locks).to.be.an('array').and.have.lengthOf(4).and.deep.include.members([
+        { key: '', mode: CW, owner: 'owner' },
+        { key: 'ancestor', mode: CW, owner: 'owner' },
+        { key: 'ancestor/parent', mode: CW, owner: 'owner' },
+        { key: 'ancestor/parent/child', mode: EX, owner: 'owner' }
+      ]);
+    }
 ```
 
 gets array that does not contain hierarchy of released keys.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CW, EX } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire(['ancestor1/parent1/child1', 'ancestor2/parent2/child2'], EX, 'owner');
+      await manager.release('ancestor2/parent2/child2', EX, 'owner');
+      expect(manager.locks).to.be.an('array').and.have.lengthOf(4).and.not.deep.include.members([
+        { key: 'ancestor2', mode: CW, owner: 'owner' },
+        { key: 'ancestor2/parent2', mode: CW, owner: 'owner' },
+        { key: 'ancestor2/parent2/child2', mode: EX, owner: 'owner' }
+      ]);
+    }
 ```
 
 gets empty array after all locks were released.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      await manager.acquire('key1');
+      await manager.acquire(['key2', 'key3']);
+      await manager.release();
+      expect(manager.locks).to.be.an('array').and.be.empty;
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-release"></a>
@@ -588,19 +1075,33 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 resolves to an empty array if there is nothing to release.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      const locks = await manager.release();
+      expect(locks).to.be.empty;
+    }
 ```
 
 does not call config.onrelease if there is nothing to release.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const onrelease = spy();
+      const manager = new LockManager({ onrelease });
+      await manager.release();
+      expect(onrelease).to.not.have.been.called;
+    }
 ```
 
 releases all previously acquired keys.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      const acquired = await manager.acquire(['key1', 'key2']);
+      const released = await manager.release();
+      expect(released).to.deep.equal(acquired);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-releasekeystring"></a>
@@ -608,19 +1109,49 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 does not release lock again if it waits for onrelease handler to complete.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const onrelease = stub().returns(delay(10));
+      const manager = new LockManager({ onrelease });
+      await manager.acquire('key');
+      const released = manager.release('key');
+      const retried = manager.release('key');
+      expect(await released).to.not.be.empty;
+      expect(await retried).to.be.empty;
+    }
 ```
 
 eventually throws error thrown by onrelease handler.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const releaseError = new Error;
+      const onrelease = stub().throws(releaseError);
+      const manager = new LockManager({ onrelease });
+      await manager.acquire('key');
+      let error;
+      try {
+        await manager.release('key');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.equal(releaseError);
+    }
 ```
 
-rollbacks operation if onrelease handler throws.
+cancels operation if onrelease handler throws.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const onrelease = stub().throws();
+      const manager = new LockManager({ onrelease });
+      const [lock] = await manager.acquire('key');
+      try {
+        await manager.release('key');
+      } catch (e) {
+        // continue
+      }
+      expect(manager.locks).to.contain(lock);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-releasekeysstring"></a>
@@ -628,7 +1159,12 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 releases specified keys.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      await manager.acquire(['key1', 'key2', 'key3']);
+      await manager.release(['key1', 'key2']);
+      expect(manager.keys).to.contain('key3').and.not.contain.members(['key1', 'key2']);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-select"></a>
@@ -636,29 +1172,46 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 is a function.
 
 ```js
+const manager = new LockManager;
 expect(manager.select).to.be.a('function')
 ```
 
 <a name="new-lockmanagerconfigobject-select"></a>
 ## .select()
-returns empty set if nothing is locked.
+returns empty set if no locks has been acquired.
 
 ```js
-expect(manager.select()).to.be.instanceof(Set).and.have.property('size').which.equal(0)
+const manager = new LockManager;
+const set = manager.select();
+expect(set).to.be.instanceof(Set).with.property('size', 0);
 ```
 
-returns set containing locks hierarchy.
+returns set containing hierarchy of acquired locks.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CW, EX } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire('ancestor/parent/child');
+      const set = manager.select();
+      expect(set).to.be.instanceof(Set).with.property('size', 4);
+      expect(Array.from(set)).to.deep.equal([
+        { key: '', mode: CW, owner: undefined },
+        { key: 'ancestor', mode: CW, owner: undefined },
+        { key: 'ancestor/parent', mode: CW, owner: undefined },
+        { key: 'ancestor/parent/child', mode: EX, owner: undefined }
+      ]);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-selectkey"></a>
 ## .select(key)
-throws if key is not string or array of strings.
+throws TypeError if key is not string or array of strings.
 
 ```js
-expect(() => manager.select(42)).to.throw
+const manager = new LockManager;
+const operation = () => manager.select(42);
+expect(operation).to.throw(TypeError);
 ```
 
 <a name="new-lockmanagerconfigobject-selectkeystring"></a>
@@ -666,7 +1219,12 @@ expect(() => manager.select(42)).to.throw
 returns empty set if specified key was not locked.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const manager = new LockManager;
+      await manager.acquire('key1');
+      const set = manager.select('key2');
+      expect(set).to.be.instanceof(Set).with.property('size', 0);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-selectkeystring"></a>
@@ -674,30 +1232,65 @@ var gen = fn.apply(this, arguments); return new Promise(function (resolve, rejec
 returns set containing locks for specified keys only.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { EX } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire(['key1', 'key2', 'key3']);
+      const set = manager.select(['key1', 'key2']);
+      expect(set).to.be.instanceof(Set).with.property('size', 2);
+      expect(Array.from(set)).to.deep.equal([
+        { key: 'key1', mode: EX, owner: undefined },
+        { key: 'key2', mode: EX, owner: undefined }
+      ]);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-selectpredicatefunction"></a>
 ## .select(predicate:function)
-returns set containing only locks satisfying predicate.
+returns set containing only locks satisfying passed predicate.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CR, PW } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire(['key1', 'key2'], CR);
+      await manager.acquire(['key1', 'key2'], PW);
+      const predicate = ({ mode }) => mode === PW;
+      const set = manager.select(predicate);
+      expect(set).to.be.instanceof(Set).with.property('size', 2);
+      expect(Array.from(set)).to.deep.equal([
+        { key: 'key1', mode: PW, owner: undefined },
+        { key: 'key2', mode: PW, owner: undefined }
+      ]);
+    }
 ```
 
 <a name="new-lockmanagerconfigobject-selectkeystring-predicate"></a>
 ## .select(key:string, predicate)
-throws if predicate is not a function.
+throws TypeError if predicate is not a function.
 
 ```js
-expect(() => manager.select('', 42)).to.throw
+const manager = new LockManager;
+const operation = () => manager.select('', 42);
+expect(operation).to.throw(TypeError);
 ```
 
 <a name="new-lockmanagerconfigobject-selectkeystring-predicatefunction"></a>
 ## .select(key:string, predicate:function)
-returns set containing only locks satisfying predicate.
+returns set containing only locks for specified key satisfying passed predicate.
 
 ```js
-var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); });
+async () => {
+      const { CR, NL } = LockManager;
+      const manager = new LockManager;
+      await manager.acquire(['key1', 'key2'], NL);
+      await manager.acquire(['key1', 'key2'], CR);
+      const predicate = ({ mode }) => mode === CR;
+      const set = manager.select('key1', predicate);
+      expect(set).to.be.instanceof(Set).with.property('size', 1);
+      expect(Array.from(set)).to.deep.equal([
+        { key: 'key1', mode: CR, owner: undefined }
+      ]);
+    }
 ```
 

@@ -1,7 +1,7 @@
 'use strict';
 
-import { COMPATIBILITIES, ESCALATIONS } from './constants';
-import Lock from './Lock';
+const { COMPATIBILITIES, ESCALATIONS } = require('./constants');
+const Lock = require('./Lock');
 
 const { defineProperty } = Object;
 
@@ -102,4 +102,4 @@ class LockList {
   }
 }
 
-export default LockList;
+module.exports = LockList;

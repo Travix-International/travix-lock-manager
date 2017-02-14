@@ -1,3 +1,3 @@
 --colors
---compilers js:babel-register
+--harmony
 --require ./test/setup.js

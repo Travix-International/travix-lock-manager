@@ -11,7 +11,7 @@ function validate(name, type, value, validator) {
   throw new TypeError(`Argument "${name}" should be ${type}`);
 }
 
-export {
+module.exports = {
   isFunction,
   isInteger,
   isObject,

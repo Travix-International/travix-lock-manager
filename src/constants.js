@@ -41,7 +41,7 @@ TYPES[NL] = 'Null';
 TYPES[PR] = 'Protected Read';
 TYPES[PW] = 'Protected Write';
 
-export {
+module.exports = {
   CODES,
   COMPATIBILITIES,
   CR,

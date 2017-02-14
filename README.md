@@ -43,20 +43,20 @@ const manager = new LockManager({
   )
 });
 
-manager.acquire('resource');
+await manager.acquire('resource');
 // Acquired: Lock of "resource" for "Exclusive"
-manager.release('resource');
+await manager.release('resource');
 // Released: Lock of "resource" for "Exclusive"
 
-manager.acquire('resource', PW, 'owner1');
+await manager.acquire('resource', PW, 'owner1');
 // Acquired: Lock of "resource" by "owner1" for "Protected Write"
-manager.acquire('resource', PW, 'owner2');
+await manager.acquire('resource', PW, 'owner2');
 // Error: Some requested locks cannot be acquired
-manager.acquire('resource', PW | CR, 'owner2');
+await manager.acquire('resource', PW | CR, 'owner2');
 // Acquired: Lock of "resource" by "owner2" for "Concurrent Read"
-manager.acquire(['resource/a', 'resource/b'], NL, 'owner3');
+await manager.acquire(['resource/a', 'resource/b'], NL, 'owner3');
 // Acquired: Lock of "resource/a" by "owner3" for "Null" Lock of "resource/b" by "owner3" for "Null"
-manager.release(null, NL, 'owner3');
+await manager.release(null, NL, 'owner3');
 // Released: Lock of "resource/a" by "owner3" for "Null" Lock of "resource/b" by "owner3" for "Null"
 
 manager.keys;
@@ -97,11 +97,15 @@ To run unit tests and generate test [coverage](https://codeclimate.com/github/Tr
 $ npm run test
 ```
 
+> Use NodeJs version 7.5 or higher to run this script because it relies on native support of async/await.
+
 To generate [documentation](https://github.com/Travix-International/travix-lock-manager/tree/master/doc/) files:
 
 ```
 $ npm run doc
 ```
+
+> Use NodeJs version 7.5 or higher to run this script because it relies on native support of async/await.
 
 # License
 

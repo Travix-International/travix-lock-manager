@@ -1,29 +1,15 @@
-import chai from 'chai';
-import sinon from 'sinon';
-import sinonChai from 'sinon-chai';
-
-import 'regenerator-runtime/runtime';
-
-import LockManager from '../src/LockManager';
+const chai = require('chai');
+const sinon = require('sinon');
+const sinonChai = require('sinon-chai');
 
 chai.use(sinonChai);
 
 const { expect } = chai;
-const { match, spy } = sinon;
-
-const { CR, CW, EX, NL, PR, PW, CODES, MODES, TYPES } = LockManager;
+const { match, spy, stub } = sinon;
 
 global.expect = expect;
 global.match = match;
 global.spy = spy;
+global.stub = stub;
 
-global.LockManager = LockManager;
-global.CR = CR;
-global.CW = CW;
-global.EX = EX;
-global.NL = NL;
-global.PR = PR;
-global.PW = PW;
-global.CODES = CODES;
-global.MODES = MODES;
-global.TYPES = TYPES;
+global.LockManager = require('../src/LockManager');
