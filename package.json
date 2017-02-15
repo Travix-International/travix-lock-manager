@@ -2,9 +2,16 @@
   "name": "travix-lock-manager",
   "description": "In-memory lock manager for NodeJs helping to serialize access to a set of hierarchically organized resources.",
   "keywords": [
-    "lock manager"
+    "lock manager",
+    "access synchronization",
+    "shared resources",
+    "concurrent read",
+    "concurrent write",
+    "protected read",
+    "protected write",
+    "exclusive"
   ],
-  "version": "0.3.7",
+  "version": "0.4.0",
   "license": "MIT",
   "homepage": "https://github.com/Travix-International/travix-lock-manager#readme",
   "repository": {
