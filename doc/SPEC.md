@@ -565,9 +565,9 @@ async () => {
       } catch (e) {
         error = e;
       }
-      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([{
-        key: 'parent/child', mode: PW, owner: undefined
-      }]);
+      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
+        { conflict: { key: 'parent/child', mode: EX, owner: undefined }, key: 'parent/child', mode: PW, owner: undefined }
+      ]);
     }
 ```
 
@@ -584,9 +584,9 @@ async () => {
       } catch (e) {
         error = e;
       }
-      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([{
-        key: 'parent/child', mode: PW, owner: undefined
-      }]);
+      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
+        { conflict: { key: 'parent', mode: EX, owner: undefined }, key: 'parent/child', mode: PW, owner: undefined }
+      ]);
     }
 ```
 
@@ -603,9 +603,9 @@ async () => {
       } catch (e) {
         error = e;
       }
-      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([{
-        key: 'ancestor/parent/child', mode: PW, owner: undefined
-      }]);
+      expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
+        { conflict: { key: 'ancestor', mode: EX, owner: undefined }, key: 'ancestor/parent/child', mode: PW, owner: undefined }
+      ]);
     }
 ```
 
@@ -677,7 +677,7 @@ async () => {
         error = e;
       }
       expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
-        { key: 'key', mode: EX, owner: 'owner2' }
+        { conflict: { key: 'key', mode: EX, owner: 'owner1' }, key: 'key', mode: EX, owner: 'owner2' }
       ]);
     }
 ```
@@ -696,7 +696,7 @@ async () => {
         error = e;
       }
       expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
-        { key: 'parent/child', mode: EX, owner: 'owner2' }
+        { conflict: { key: 'parent', mode: EX, owner: 'owner1' }, key: 'parent/child', mode: EX, owner: 'owner2' }
       ]);
     }
 ```
@@ -715,7 +715,7 @@ async () => {
         error = e;
       }
       expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
-        { key: 'ancestor/parent/child', mode: EX, owner: 'owner2' }
+        { conflict: { key: 'ancestor', mode: EX, owner: 'owner1' }, key: 'ancestor/parent/child', mode: EX, owner: 'owner2' }
       ]);
     }
 ```
@@ -750,8 +750,8 @@ async () => {
         error = e;
       }
       expect(error).to.be.instanceof(AcquireError).with.property('locks').that.deep.equals([
-        { key: 'key1', mode: EX, owner: 'owner2' },
-        { key: 'key1', mode: PW, owner: 'owner2' }
+        { conflict: { key: 'key1', mode: EX, owner: 'owner1' }, key: 'key1', mode: EX, owner: 'owner2' },
+        { conflict: { key: 'key1', mode: EX, owner: 'owner1' }, key: 'key1', mode: PW, owner: 'owner2' }
       ]);
     }
 ```

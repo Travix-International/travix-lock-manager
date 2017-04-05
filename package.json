@@ -4,14 +4,9 @@
   "keywords": [
     "lock manager",
     "access synchronization",
-    "shared resources",
-    "concurrent read",
-    "concurrent write",
-    "protected read",
-    "protected write",
-    "exclusive"
+    "shared resources"
   ],
-  "version": "0.4.0",
+  "version": "0.4.1",
   "license": "MIT",
   "homepage": "https://github.com/Travix-International/travix-lock-manager#readme",
   "repository": {

@@ -19,6 +19,8 @@ supporting transactional semantics.</p>
 Lock class. Represents a particular lock on a resource.
 
 **Kind**: global class  
+**Propety**: <code>[Lock](#Lock)</code> conflict
+If attempt to acquire this lock led to a conflict, this property will point to the conflicting lock.  
 **Propety**: <code>String</code> key
 Key of this lock.  
 **Propety**: <code>Number</code> mode
@@ -99,7 +101,7 @@ Should return truthy value if owners are equal, falsy otherwise.
 Useful when owners are represented as profile objects containing some unique property (like email).
     - [.delimiter] <code>String</code> <code> = &#x27;/&#x27;</code> - String delimiter used to split hierarchical keys.
     - [.AcquireError] <code>String</code> <code> = Error</code> - Constructor function creating error object to denote the "some locks cannot be acquired" error.
-Accepts 2 arguments: string message and array of failed locks.
+Accepts 2 arguments: string error message and array of failed locks. Each failed lock will contain conflict property pointing to the conflicting lock.
     - [.onacquire] <code>function</code> - A function called each time when new locks are acquired or existing locks are prolonged.
 Accepts one parameter: array of lock objects.
 If this function throws an error or returns a promise which eventually rejects,

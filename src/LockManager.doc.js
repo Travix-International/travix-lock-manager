@@ -22,7 +22,7 @@ class LockManager {
    *
    * @param {String} [config.AcquireError = Error]
    * Constructor function creating error object to denote the "some locks cannot be acquired" error.
-   * Accepts 2 arguments: string message and array of failed locks.
+   * Accepts 2 arguments: string error message and array of failed locks. Each failed lock will contain conflict property pointing to the conflicting lock.
    *
    * @param {Function} [config.onacquire]
    * A function called each time when new locks are acquired or existing locks are prolonged.

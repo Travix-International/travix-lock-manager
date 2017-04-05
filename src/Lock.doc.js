@@ -1,6 +1,9 @@
 /**
  * Lock class. Represents a particular lock on a resource.
  *
+ * @propety {Lock} conflict
+ * If attempt to acquire this lock led to a conflict, this property will point to the conflicting lock.
+ *
  * @propety {String} key
  * Key of this lock.
  *

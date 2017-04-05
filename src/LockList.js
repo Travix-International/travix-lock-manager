@@ -26,6 +26,7 @@ class LockList {
         return true;
       }
       if (!(present.mode & compatibility)) {
+        lock.conflict = present;
         failed.push(lock);
         return false;
       }
@@ -46,11 +47,17 @@ class LockList {
     const escalation = ESCALATIONS[lock.mode];
     const compatibility = COMPATIBILITIES[escalation];
     for (const present of locks) {
-      if (!(present.mode & compatibility)) return false;
+      if (!(present.mode & compatibility)) {
+        lock.conflict = present;
+        return false;
+      }
     }
     const { key, parent } = this;
     const captured = new Lock(key, escalation, lock.owner, false);
-    if (parent && !parent.capture(captured)) return false;
+    if (parent && !parent.capture(captured)) {
+      lock.conflict = captured.conflict;
+      return false;
+    }
     defineProperty(lock, 'parent', { value: captured });
     locks.push(captured);
     return true;
